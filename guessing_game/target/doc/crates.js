@@ -1,0 +1,1 @@
+window.ALL_CRATES = ["byteorder","cfg_if","getrandom","guessing_game","libc","ppv_lite86","proc_macro2","quote","rand","rand_chacha","rand_core","syn","unicode_ident","zerocopy","zerocopy_derive"];
