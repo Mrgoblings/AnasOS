@@ -1,0 +1,9 @@
+[package]
+name = "quack-line"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+fltk = "^1.4"
+fltk-flex = "0.2"
+fltk-theme = "0.7"
