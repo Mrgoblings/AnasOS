@@ -1,78 +1,101 @@
 [org 0x7c00]
 
-; disk nuber is stored in dl
-mov [diskNum], dl
+; disable all interupts
+cli
 
-; Tiny Memory Model
-xor ax, ax
-mov ss, ax
-mov ds, ax
-; mov cs, ax - never change the code segment
-mov es, ax
+; load the gdt descriptor
+lgdt [GDT_Descriptor]
 
-mov ah, 2
-mov al, 1
-mov ch, 0
-mov cl, 2
-mov dh, 0
-mov dl, [diskNum]
-mov bx, 0x7e00
-int 0x13
+; change the last bit of cr0 (controll register 0) to 1
+mov eax, cr0
+or eax, 1
+mov cr0, eax; yay 32 bit protected mode !!
 
-jnc setCarryFlagLow
-jc setCarryFlagHigh
+; far jump - jump to another segment
+jmp CODE_SEG: start_protected_mode
 
-push si
-
-cmp al, 1
-je setCorrectNOfSegments
-jne setWrongNOfSegments
-
-mov ah, 0x0e
-mov al, [0x7e00]
-; mov al, 'C'
-int 0x10
-
-call printSi
-pop si
-call printSi
 
 jmp $
+GDT_Start:
+    null_descriptptor: ; always a null descriptor at the begining of the descriptor
+        dd 0 ; 00000000 - 8 bits
+        dd 0;
 
-diskNum: db 0
+    ; base (32 bits): 0
+    ; limit (20 bits): 0xFFFFF
+    ; present(1 bit), privilege (2 bits), type (1 bit - is Code/Data segment): 1001
+    ; Type Flags(4 bits) (isCode, isConforming/isDirectionDown, read/write, 0 for the cpu) - 1010
+    ; Other Flags (4 bits) ( isGranular - more free space, 32bit - for now yes, 64bit, AVL - some programs may need it so 0)- 1100
+    code_descriptor:
 
-correctNOfSegments: db "Correct number of Segments.", 0x0D, 0x0A, 0
-wrongNOfSegments:   db "Error! Wrong number of Segments.", 0x0D, 0x0A, 0
+        ; define the first 16 bits of the limit. The whole limit will be 0xffffF
+        dw 0xFFFF 
+        
+        ; define the first 24 bits of the base
+        dw 0 ; 16
+        db 0 ; 8
 
-carryFlagHigh:  db "Error! Carry Number is HIGH", 0x0D, 0x0A, 0
-carryFlagLow: db "All good, Carry Number is low", 0x0D, 0x0A, 0
+        ; ppt + Type Flags (ppt -  pres, priv, type)
+        db 0b10011010
+        
+        ; Other Flags + Last 4 bits of the limit(size)
+        db 0b11001111
+        
+        ; Last 8 bits of base
+        db 0
 
-setCorrectNOfSegments:
-    mov si, correctNOfSegments
-    ret
-setWrongNOfSegments:
-    mov si, wrongNOfSegments
-    ret
-setCarryFlagHigh:
-    mov si, carryFlagHigh
-    ret
-setCarryFlagLow:
-    mov si, carryFlagLow
-    ret
+    ; base (32 bits): 0
+    ; limit (20 bits): 0xFFFFF
+    ; present(1 bit), privilege (2 bits), type (1 bit - is Code/Data segment): 1001
+    ; Type Flags(4 bits) (isCode, isConforming/isDirectionDown, read/write, 0 for the cpu) - 0010
+    ; Other Flags (4 bits) ( isGranular - more free space, 32bit - for now yes, 64bit, AVL - some programs may need it so 0)- 1100
+    data_descriptor:
 
-printSi:
-    mov al, [si]
-    cmp al, 0
-    je endPrint
+        ; define the first 16 bits of the limit. The whole limit will be 0xffffF
+        dw 0xFFFF 
+        
+        ; define the first 24 bits of the base
+        dw 0 ; 16
+        db 0 ; 8
 
-    mov ah, 0x0e
-    int 0x10
+        ; ppt + Type Flags (ppt -  pres, priv, type)
+        db 10010010b
+        
+        ; Other Flags + Last 4 bits of the limit(size)
+        db 11001111b
+        
+        ; Last 8 bits of base
+        db 0
+    GDT_End:
 
-    inc si
-    jmp printSi
-endPrint:
-    ret
+GDT_Descriptor: 
+    dw GDT_End - GDT_Start - 1  ; size
+    dd GDT_Start                ; start
+
+CODE_SEG equ code_descriptor - GDT_Start
+DATA_SEG equ data_descriptor - GDT_Start
+    ; equ - define constants
+
 
 times 510 - ($ - $$) db 0
-dw 0xaa55
-times 512 db 'A'
+dw 0xAA55
+
+[bits 32]
+start_protected_mode:
+    mov ax, DATA_SEG
+    mov ds, ax
+    mov es, ax
+    mov fs, ax
+    mov gs, ax
+    mov ss, ax
+
+    ; priting characters to Video Memory directly
+    ; videoMemory starts at 0xb8000
+    ; first byte: character
+    ; second byte: colour
+    
+    mov edi, 0xB8000
+    mov al, 'A'
+    mov ah, 0x0f ; the color black
+
+    jmp $ 
