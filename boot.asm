@@ -99,4 +99,3 @@ start_protected_mode:
     mov ah, 0x0f ; the color black
 
     jmp $ 
-
