@@ -14,8 +14,6 @@ mov cr0, eax; yay 32 bit protected mode !!
 ; far jump - jump to another segment
 jmp CODE_SEG: start_protected_mode
 
-
-jmp $
 GDT_Start:
     null_descriptptor: ; always a null descriptor at the begining of the descriptor
         dd 0 ; 00000000 - 8 bits
