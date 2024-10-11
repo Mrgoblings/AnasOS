@@ -1,16 +1,9 @@
-build: kernel bootloader
+boot:
+	[ -d out ] || mkdir out
+	gcc -m32 -fno-stack-protector -fno-builtin -c tmp-c-kernel/kernel.c -o out/kernel.o
+	nasm -f elf32 bootloader/boot.asm -o out/boot.o
+	ld -m elf_i386 -T bootloader/linker.ld -o AnasOS/boot/kernel out/boot.o out/kernel.o
+	# rm -r out
 	
-bootloader:
-	nasm -f bin boot.asm -o boot.bin
-	qemu-system-x86_64 -drive format=raw,file=boot.bin
-
-bootloader-vnc:
-	nasm -f bin boot.asm -o boot.bin
-	qemu-system-x86_64 -drive format=raw,file=boot.bin -vnc :0
-
-kernel:
-	@cd ./anasos-kernel && cargo build --target thumbv7em-none-eabihf
-
-kernel-release: 
-	@cd ./anasos-kernel && cargo build --release --target thumbv7em-none-eabihf
-
+	grub-mkrescue -o release/AnasOS.iso AnasOS/
+	qemu-system-i386 release/AnasOS.iso
