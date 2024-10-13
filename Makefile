@@ -1,6 +1,6 @@
 .PHONY:	run clean
 
-all: out-folder kernel boot image run clean
+all: out-folder kernel bootload image clean run
 
 out-folder:
 	[ -d out ] || mkdir out
@@ -8,7 +8,7 @@ out-folder:
 kernel:
 	gcc -m32 -fno-stack-protector -fno-builtin -c tmp-c-kernel/kernel.c -o out/kernel.o
 
-boot:
+bootload:
 	nasm -f elf32 bootloader/boot.asm -o ./out/boot.o
 
 image:
