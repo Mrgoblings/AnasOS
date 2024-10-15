@@ -6,12 +6,12 @@ section .text
     DD -(0x1BADB002 + 0x00000000) ; checksum - to verify the bootloader
 
 global start
-extern kmain
+extern _start ; rust start function
 
 start:
     CLI
     MOV esp, stack_space
-    CALL kmain
+    CALL _start ; call the rust start function
     HLT
 HaltKernel:
     CLI
