@@ -22,13 +22,13 @@ kernel-c:
 # 	mv *.o ./out/
 
 kernel-rust:
-	@cd ./anasos-kernel && cargo +nightly build --target thumbv7em-none-eabihf
+	@cd ./anasos-kernel && cargo build --target x86_64-unknown-none
 	cp ./anasos-kernel/target/thumbv7em-none-eabihf/debug/anasos-kernel ./out/kernel.o
 	# rustc --target i386-unknown-linux-gnu --build-std core --crate-type=staticlib --emit obj --o ./out/kernel.o ./anasos-kernel/src/main.rs
 
 kernel-rust-release:
-	@cd ./anasos-kernel && cargo +nightly build --release --target x86_64-unknown-none
-	cp ./anasos-kernel/target/x86_64-unknown-none.json/release/anasos-kernel ./out/kernel.o
+	@cd ./anasos-kernel && cargo build --release --target x86_64-unknown-none
+	cp ./anasos-kernel/target/x86_64-unknown-none/release/anasos-kernel ./out/kernel.o
 
 bootload:
 	nasm -f elf32 bootloader/boot.asm -o ./out/boot.o
