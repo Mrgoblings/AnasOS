@@ -1,19 +1,14 @@
 .PHONY: run clean
 
-all: out-folder bootload kernel-rust image clean run
+all: clean out-folder bootload kernel-rust image run
 
-release: out-folder bootload kernel-rust-release image clean run
 
 out-folder:
 	-@mkdir out
 
 kernel-rust:
-	@cd ./anasos-kernel &&  cargo rustc --target x86_64-unknown-none -- --emit obj
-	cp `ls -1 ./anasos-kernel/target/x86_64-unknown-none/debug/deps/anasos_kernel*.o | head -n 1` ./out/kernel.o
-
-kernel-rust-release:
 	@cd ./anasos-kernel &&  cargo rustc --release --target x86_64-unknown-none -- --emit obj
-	cp `ls -1 ./anasos-kernel/target/x86_64-unknown-none/release/deps/anasos_kernel*.o | head -n 1` ./out/kernel.o
+	cp `ls -1 ./anasos-kernel/target/x86_64-unknown-none/release/deps/*.o | head -n 1` ./out/kernel.o
 
 
 bootload:
