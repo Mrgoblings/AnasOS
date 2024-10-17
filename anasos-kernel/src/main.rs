@@ -9,17 +9,32 @@ fn panic(_info: &PanicInfo) -> ! {
     loop {}
 }
 
-static HELLO: &[u8] = b"Hello World!";
 #[no_mangle]
 pub extern "C" fn _start() -> ! {
+    print("AAA Hello!!!!@@");
+    loop {}
+}
+
+pub fn print(input: &str) {
     let vga_buffer = 0xb8000 as *mut u8;
 
-    for (i, &byte) in HELLO.iter().enumerate() {
+    for (i, byte) in input.bytes().enumerate() {
         unsafe {
             *vga_buffer.offset(i as isize * 2) = byte;
             *vga_buffer.offset(i as isize * 2 + 1) = 0xb;
         }
     }
-
-    loop {}
 }
+
+/*
+pub fn print(input: &[u8]){
+    let vga_buffer = 0xb8000 as *mut u8;
+
+    for (i, &byte) in input.iter().enumerate() {
+        unsafe {
+            *vga_buffer.offset(i as isize * 2) = byte;
+            *vga_buffer.offset(i as isize * 2 + 1) = 0xb;
+        }
+    }
+}
+*/
