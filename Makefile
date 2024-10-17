@@ -5,7 +5,7 @@ all: out-folder bootload kernel-rust image clean run
 release: out-folder bootload kernel-rust-release image clean run
 
 out-folder:
-	@([ -d out ] || mkdir out)
+	-@mkdir out
 
 kernel-rust:
 	@cd ./anasos-kernel &&  cargo rustc --target x86_64-unknown-none -- --emit obj
@@ -13,7 +13,7 @@ kernel-rust:
 
 kernel-rust-release:
 	@cd ./anasos-kernel &&  cargo rustc --release --target x86_64-unknown-none -- --emit obj
-	cp `ls -1 ./anasos-kernel/target/x86_64-unknown-none/debug/deps/anasos_kernel*.o | head -n 1` ./out/kernel.o
+	cp `ls -1 ./anasos-kernel/target/x86_64-unknown-none/release/deps/anasos_kernel*.o | head -n 1` ./out/kernel.o
 
 
 bootload:
@@ -27,4 +27,5 @@ run:
 	qemu-system-x86_64 release/AnasOS.iso
 
 clean:
-	rm -r out
+	-@rm -r out
+	-@rm -r anasos-kernel/target
