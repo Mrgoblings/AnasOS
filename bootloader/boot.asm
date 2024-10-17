@@ -1,4 +1,4 @@
-BITS 32
+BITS 64
 section .text
     ALIGN 4
     DD 0x1BADB002
