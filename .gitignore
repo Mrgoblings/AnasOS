@@ -3,3 +3,6 @@
 *.o
 *.elf
 out/
+
+AnasOS/boot/kernel
+release/

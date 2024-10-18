@@ -12,7 +12,7 @@ pub extern "C" fn _start() -> ! {
 }
 
 #[panic_handler]
-fn panic(info: &PanicInfo) -> ! {
+fn panic(_info: &PanicInfo) -> ! {
     // unsafe { vga::WRITER.force_unlock() };
     // println!("{}", info);
     loop {}
