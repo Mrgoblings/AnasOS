@@ -16,10 +16,10 @@ bootload:
 
 image:
 	ld -m elf_x86_64 -T bootloader/linker.ld -o AnasOS/boot/kernel out/boot.o out/kernel.o
-	grub-mkrescue -o release/AnasOS.iso AnasOS/
+	grub-mkrescue -o AnasOS.iso AnasOS/
 
 run:
-	qemu-system-x86_64 release/AnasOS.iso
+	qemu-system-x86_64 AnasOS.iso
 
 clean:
 	-@rm -r out
