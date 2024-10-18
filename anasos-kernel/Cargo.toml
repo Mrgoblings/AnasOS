@@ -1,13 +1,8 @@
 [package]
 name = "anasos-kernel"
 version = "0.1.0"
+authors = ["Emil Momchev <emil@momchev.dev>"]
 edition = "2021"
-
-[profile.dev]
-panic = "abort"
-
-[profile.release]
-panic = "abort"
 
 [dependencies]
 volatile = "0.2.6"
