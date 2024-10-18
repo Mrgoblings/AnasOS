@@ -12,6 +12,12 @@ use spin::Mutex;
 
 const VGA_BUFFER: *mut u8 = 0xb8000 as *mut u8;
 
+lazy_static! {
+    pub static ref WRITER: Mutex<Writer> = Mutex::new(
+        Writer::new_default()
+    );
+}
+
 impl fmt::Write for Writer {
     fn write_str(&mut self, s: &str) -> fmt::Result {
         self.write_string(s);
@@ -215,12 +221,6 @@ impl Writer {
     }
 }
 
-
-lazy_static! {
-    pub static ref WRITER: Mutex<Writer> = Mutex::new(
-        Writer::new_default()
-    );
-}
 
 
 #[macro_export]
