@@ -1,7 +1,7 @@
 **Referenced issue**
 This pull request resolves _GITHUB_ISSUE_NUMBER_.
 
-**Change Description**
+**Description**
 A clear and concise description of what changes you have made.
 
 **Root Cause (if fixing a bug)**
