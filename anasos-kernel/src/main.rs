@@ -2,7 +2,7 @@
 #![no_main]
 
 use core::panic::PanicInfo;
-mod vga;
+// mod vga;
 
 
 #[no_mangle]
