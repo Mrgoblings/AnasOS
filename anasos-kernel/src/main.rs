@@ -7,13 +7,13 @@ mod vga;
 
 #[no_mangle]
 pub extern "C" fn _start() -> ! {
-    // println!("Hello World{}", "!");
+    println!("Hello World{}", "!");
     loop {}
 }
 
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
-    // unsafe { vga::WRITER.force_unlock() };
-    // println!("{}", info);
+    unsafe { vga::WRITER.force_unlock() };
+    println!("{}", info);
     loop {}
 }
