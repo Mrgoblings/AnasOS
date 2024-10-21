@@ -1,1 +1,8 @@
 *.bin
+*.out
+*.o
+*.elf
+*.iso
+out/
+
+AnasOS/boot/kernel

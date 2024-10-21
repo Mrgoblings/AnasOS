@@ -1,0 +1,60 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout with GitHub
+        uses: actions/checkout@v2
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          draft: false
+          prerelease: false
+
+  build:
+    name: Build packages
+    needs: create-release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout with GitHub
+        uses: actions/checkout@v2
+
+      - name: Set up Docker container
+        uses: docker://rust:latest
+
+      - name: Install additional dependencies
+        run: |
+          apt-get update
+          apt-get install -y nasm grub-pc-bin grub-common
+          rustup target add x86_64-unknown-none
+
+      - name: Build project
+        run: make no-run
+
+      - name: Archive build output
+        run: |
+          zip -r AnasOS.iso.zip AnasOS.iso
+
+      - name: Upload Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: AnasOS.iso.zip
+          asset_name: AnasOS.iso.zip
+          asset_content_type: application/zip
