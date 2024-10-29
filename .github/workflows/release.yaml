@@ -65,13 +65,6 @@ jobs:
             echo "Updated TAG: $TAG"
             echo "TAG=$TAG" >> $GITHUB_ENV
 
-      # - name: Create and push tag
-      #   run: |
-      #     git config --global user.name "github-actions[bot]"
-      #     git config --global user.email "github-actions[bot]@users.noreply.github.com"
-      #     git tag $TAG
-      #     git push origin $TAG
-
       - name: Create Release
         id: release-action
         uses: ncipollo/release-action@v1
