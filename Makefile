@@ -4,6 +4,9 @@ all: clean out-folder bootload kernel-rust image run
 
 no-run: clean out-folder bootload kernel-rust image
 
+test:
+	echo "No tests for now"
+
 out-folder:
 	-@mkdir out
 
