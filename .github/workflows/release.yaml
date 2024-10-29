@@ -129,4 +129,3 @@ jobs:
           asset_path: AnasOS.iso.zip
           asset_name: AnasOS.iso.zip
           asset_content_type: application/zip
-          
