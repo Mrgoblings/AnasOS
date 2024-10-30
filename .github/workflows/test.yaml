@@ -1,0 +1,24 @@
+name: Tests
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install additional dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y nasm grub-pc-bin grub-common make mtools
+        rustup target add x86_64-unknown-none
+
+    - name: Run Tests
+      run: make test
