@@ -11,7 +11,7 @@ out-folder:
 	-@mkdir out
 
 kernel-rust:
-	@cd ./anasos-kernel &&  cargo rustc --release --target x86_64-unknown-none -- --emit obj
+	@cd ./anasos-kernel &&  cargo +nightly rustc --release --target x86_64-unknown-none -- --emit obj
 	@cp `ls -1 ./anasos-kernel/target/x86_64-unknown-none/release/deps/*.o | head -n 1` ./out/kernel.o
 
 bootload:
