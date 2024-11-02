@@ -1,2 +1,0 @@
-cargo:rustc-link-arg=-Tlinker.ld
-cargo:rustc-link-arg=/home/mrgoblings/Documents/coding/diplomna/AnasOS/target/x86_64-unknown-none/debug/build/anasos-kernel-18391c58839500b0/out/bootloader.o

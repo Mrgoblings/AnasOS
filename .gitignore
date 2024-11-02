@@ -1,7 +1,8 @@
+target/
+AnasOS/boot/kernel
+
 *.bin
 *.out
 *.o
 *.elf
 *.iso
-
-AnasOS/boot/kernel
