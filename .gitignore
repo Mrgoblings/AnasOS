@@ -3,6 +3,5 @@
 *.o
 *.elf
 *.iso
-out/
 
 AnasOS/boot/kernel

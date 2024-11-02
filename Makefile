@@ -19,3 +19,5 @@ run:
 
 clean:
 	-@rm -r anasos-kernel/target
+	-@rm AnasOS/boot/kernel
+	-@rm AnasOS.iso
