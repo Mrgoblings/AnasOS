@@ -1,4 +1,4 @@
-#![no_std]
+// #![no_std]
 
 // Used to remove Rust optimizations on the Buffer struct
 use volatile::Volatile;
