@@ -1,29 +1,21 @@
 .PHONY: run clean
 
-all: clean out-folder bootload kernel-rust image run
+all: clean kernel-rust image run
 
-no-run: clean out-folder bootload kernel-rust image
+no-run: clean kernel-rust image
 
 test:
 	echo "No tests for now"
 
-out-folder:
-	-@mkdir out
-
 kernel-rust:
-	@cd ./anasos-kernel &&  cargo +nightly rustc --release --target x86_64-unknown-none -- --emit obj
-	@cp `ls -1 ./anasos-kernel/target/x86_64-unknown-none/release/deps/*.o | head -n 1` ./out/kernel.o
-
-bootload:
-	@nasm -f elf64 bootloader/boot.asm -o ./out/boot.o
+	@cd ./anasos-kernel && cargo +nightly build --release --target x86_64-unknown-none
 
 image:
-	ld -m elf_x86_64 -T bootloader/linker.ld -o AnasOS/boot/kernel out/boot.o out/kernel.o
+	@cp  ./anasos-kernel/target/x86_64-unknown-none/release/anasos-kernel AnasOS/boot/kernel
 	grub-mkrescue -o AnasOS.iso AnasOS/
 
 run:
 	qemu-system-x86_64 AnasOS.iso
 
 clean:
-	-@rm -r out
 	-@rm -r anasos-kernel/target
