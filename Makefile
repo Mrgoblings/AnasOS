@@ -2,6 +2,8 @@
 
 all: clean kernel-rust image run
 
+vnc: clean kernel-rust image run-vnc
+
 no-run: clean kernel-rust image
 
 test:
@@ -16,6 +18,9 @@ image:
 
 run:
 	qemu-system-x86_64 AnasOS.iso
+
+run-vnc:
+	qemu-system-x86_64 AnasOS.iso -vnc :0
 
 clean:
 	-@rm -r anasos-kernel/target
