@@ -10,7 +10,7 @@ test:
 	echo "No tests for now"
 
 kernel-rust:
-	@cd ./anasos-kernel && cargo +nightly build --release --target x86_64-unknown-none
+	@cd ./anasos-kernel && cargo build --release
 
 image:
 	@cp  ./anasos-kernel/target/x86_64-unknown-none/release/anasos-kernel AnasOS/boot/kernel
