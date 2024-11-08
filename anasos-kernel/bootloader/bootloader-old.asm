@@ -1,14 +1,9 @@
-BITS 64
-section .multiboot
-ALIGN 8
-MULTIBOOT_HEADER:
-    DD 0x1BADB002
-    DD 0x00000000
-    DD -(0x1BADB002 + 0x00000000) ; checksum - to verify the bootloader
+BITS 32
+; ALIGN 4
 
-section .text
 global start
-extern _start ; rust start function
+section .text
+; extern _start ; rust start function
 
 start:
     CLI

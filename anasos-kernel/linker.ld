@@ -2,9 +2,7 @@ OUTPUT_FORMAT(binary)
 ENTRY(start)
 SECTIONS
 {
-    . = 0x100000;
-		.multiboot : { *(.multiboot) }
+    . = 1M;
+		.boot : { KEEP(*(.multiboot_header)) }
     .text : 		 { *(.text) }
-    .data : 		 { *(.data) }
-    .bss  : 		 { *(.bss) }
 }
