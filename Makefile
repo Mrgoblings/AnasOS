@@ -6,8 +6,8 @@ vnc: clean kernel-rust image run-vnc
 
 no-run: clean kernel-rust image
 
-test:
-	echo "No tests for now"
+test: no-run
+	echo "Compiled the OS successfully"
 
 kernel-rust:
 	@cd ./anasos-kernel && cargo build --release
