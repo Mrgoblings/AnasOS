@@ -1,7 +1,7 @@
-global start
-extern long_mode_start
+GLOBAL start
+EXTERN long_mode_start
 
-section .text
+SECTION .text
 BITS 32
 
 start:
@@ -31,7 +31,7 @@ check_cpuid:
     POP eax
     MOV ecx, eax
     XOR eax, 1 << 21
-    push eax
+    PUSH eax
     POPFD
     PUSHFD
     POP eax
@@ -61,7 +61,7 @@ check_long_mode:
     JMP error
 
 setup_page_tables:
-    ; identity maping is where a phisical addres is linked to the same virtual addres
+    ; identity maping (a phisical addres is linked to the same virtual addres)
     
     MOV eax, page_table_l3
     OR eax, 0b11 ; present, writable
@@ -103,7 +103,7 @@ enable_paging:
 
     ; enable paging
     MOV eax, cr0
-    or eax, 1 << 31
+    OR eax, 1 << 31
     MOV cr0, eax
 
     RET
@@ -114,9 +114,9 @@ error:
     MOV dword [0xB8004], 0x4F3A4F52
     MOV dword [0xB8008], 0x4F204F20
     MOV byte  [0xB800C], al
-    hlt
+    HLT
 
-section .bss
+SECTION .bss
 ALIGN 4096
 page_table_l4:
     RESB 4096
@@ -128,7 +128,7 @@ stack_bottom:
     RESB 4096 * 4 ; bytes reserved for stack
 stack_top:
 
-section .rodata
+SECTION .rodata
 gdt64:
     dq 0 ; zero entry
 .code_segment: EQU $ - gdt64

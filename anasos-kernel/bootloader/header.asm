@@ -1,4 +1,4 @@
-section .multiboot_header
+SECTION .multiboot_header
 header_start:
 	; magic number
 	dd 0xe85250d6 ; multiboot2

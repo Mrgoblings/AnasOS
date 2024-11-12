@@ -1,10 +1,10 @@
-global long_mode_start 
-extern _start
+GLOBAL long_mode_start 
+EXTERN _start
 
-section .text
+SECTION .text
 BITS 64
 long_mode_start:
-    ; load null to all data segmant registers (needed for the cpu to work corectly)
+    ; load null to all data segmant registers (needed for the cpu to work as intended)
     MOV ax, 0
     MOV ss, ax
     MOV ds, ax
@@ -12,11 +12,7 @@ long_mode_start:
     MOV fs, ax
     MOV gs, ax
 
-    ; print "OK"
-    ; MOV dword [0xb8000], 0x2f4b2f4f
-
     CALL _start
-    ; 
 
     HLT
 
