@@ -98,7 +98,6 @@ jobs:
           sudo apt update
           sudo apt install -y nasm grub-pc-bin grub-common make mtools
           rustup target add x86_64-unknown-none
-          rustup component add rust-src --toolchain x86_64-unknown-none
           
       - name: Build project
         run: make no-run
