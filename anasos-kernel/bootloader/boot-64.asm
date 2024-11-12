@@ -1,9 +1,8 @@
-BITS 64
-
 global long_mode_start 
+extern _start
 
 section .text
-extern _start
+BITS 64
 long_mode_start:
     ; load null to all data segmant registers (needed for the cpu to work corectly)
     mov ax, 0

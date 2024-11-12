@@ -1,8 +1,8 @@
-BITS 32
-
 global start
-section .text
 extern long_mode_start
+
+section .text
+BITS 32
 
 start:
     MOV esp, stack_top
