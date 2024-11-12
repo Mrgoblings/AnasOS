@@ -20,7 +20,7 @@ start:
     HLT
 
 check_multiboot:
-    CMP eax, 0x2F4B2F4F
+    CMP eax, 0x36d76289
     JNE .no_multiboot
     RET
 .no_multiboot:
