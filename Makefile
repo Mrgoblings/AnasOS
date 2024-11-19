@@ -23,6 +23,6 @@ run-vnc:
 	qemu-system-x86_64 AnasOS.iso -vnc :0
 
 clean:
-	-@rm -r anasos-kernel/target
-	-@rm AnasOS/boot/kernel
-	-@rm AnasOS.iso
+	-@cd ./anasos-kernel && cargo clean > /dev/null 2>&1
+	-@rm AnasOS/boot/kernel > /dev/null 2>&1
+	-@rm AnasOS.iso > /dev/null 2>&1
