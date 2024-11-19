@@ -17,7 +17,7 @@ jobs:
     - name: Install additional dependencies
       run: |
         sudo apt update
-        sudo apt install -y nasm grub-pc-bin grub-common make mtools
+        sudo apt install -y nasm grub-pc-bin grub-common make mtools xorriso
         rustup target add x86_64-unknown-none
 
     - name: Run Tests
