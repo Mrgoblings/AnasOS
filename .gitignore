@@ -1,8 +1,9 @@
+target/
+AnasOS/boot/kernel
+.vscode/
+
 *.bin
 *.out
 *.o
 *.elf
 *.iso
-out/
-
-AnasOS/boot/kernel
