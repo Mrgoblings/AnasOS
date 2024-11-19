@@ -7,7 +7,7 @@ BITS 32
 start:
     MOV esp, stack_top
     CALL check_multiboot
-    call check_cpuid
+    CALL check_cpuid
     CALL check_long_mode
 
     CALL setup_page_tables

@@ -6,8 +6,9 @@ vnc: clean kernel-rust image run-vnc
 
 no-run: clean kernel-rust image
 
-test: no-run
-	echo "Compiled the OS successfully"
+test: clean
+	@cd ./anasos-kernel && cargo test
+	echo "Success"
 
 kernel-rust:
 	@cd ./anasos-kernel && cargo build --release
@@ -23,6 +24,6 @@ run-vnc:
 	qemu-system-x86_64 AnasOS.iso -vnc :0
 
 clean:
-	-@rm -r anasos-kernel/target
+	-@cd ./anasos-kernel && cargo clean
 	-@rm AnasOS/boot/kernel
 	-@rm AnasOS.iso
