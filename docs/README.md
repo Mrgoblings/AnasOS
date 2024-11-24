@@ -7,6 +7,7 @@ Welcome to the AnasOS documentation. This document will guide you through the va
 1. [Introduction](#introduction)
 2. [File Structure](#file-structure)
 3. [Multiboot Configuration](#multiboot-configuration)
+4. [Bootloader](#bootloader)
 4. [Kernel](#kernel)
 5. [Window Manager](#window-manager)
 6. [Applications](#applications)
@@ -62,6 +63,10 @@ Below is the file structure for the AnasOS documentation:
 ## Multiboot Configuration
 
 The multiboot configuration is responsible for initializing the hardware and loading the kernel into memory. Detailed documentation about the multiboot configuration can be found [here](multiboot/).
+
+## Bootloader
+
+The bootloader is a critical component that initializes the system and loads the kernel into memory. It is responsible for setting up the environment so that the kernel can execute properly. Detailed documentation about the bootloader can be found [here](bootloader/).
 
 ## Kernel
 
