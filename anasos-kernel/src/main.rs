@@ -10,8 +10,19 @@ pub extern "C" fn _start() -> ! {
 
     anasos_kernel::init(); 
 
-    // invoke a breakpoint exception
-    x86_64::instructions::interrupts::int3();
+    // // invoke a breakpoint exception
+    // x86_64::instructions::interrupts::int3();
+
+    // trigger a page fault
+    // unsafe {
+    //     *(0xdeadbeef as *mut u8) = 42;
+    // };
+
+    fn stack_overflow() {
+        stack_overflow(); // for each recursion, the return address is pushed
+    }
+    // trigger a stack overflow
+    stack_overflow();
 
     println!("Still Alive!");
     loop {}
