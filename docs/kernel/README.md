@@ -5,7 +5,7 @@ Welcome to the AnasOS Kernel documentation. This kernel is written in Rust and i
 ## Overview
 
 The AnasOS Kernel is currently in development and includes the following features:
-- VGA text mode support
+- VGA text mode support (see [vga.md](vga.md) for more in-depth documentation)
 - A `build.rs` script to bundle the kernel with the bootloader
 
 ## Upcoming Features
