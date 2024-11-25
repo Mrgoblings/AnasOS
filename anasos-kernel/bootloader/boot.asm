@@ -1,5 +1,6 @@
 GLOBAL start
 EXTERN long_mode_start
+EXTERN init_idt
 
 SECTION .text
 BITS 32
