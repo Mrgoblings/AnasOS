@@ -18,18 +18,20 @@ pub extern "C" fn _start() -> ! {
     //     *(0xdeadbeef as *mut u8) = 42;
     // };
 
-    fn stack_overflow() {
-        stack_overflow(); // for each recursion, the return address is pushed
-    }
-    // trigger a stack overflow
-    stack_overflow();
+    // example of a stack overflow reboot sequence didn't work - no reboot sequence
+    // fn stack_overflow() {
+    //     stack_overflow(); // for each recursion, the return address is pushed
+    // }
+    // // trigger a stack overflow
+    // stack_overflow();
 
     println!("Still Alive!");
-    loop {}
+
+    anasos_kernel::hlt();
 }
 
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
     println!("{}", info);
-    loop {}
+    anasos_kernel::hlt();
 }

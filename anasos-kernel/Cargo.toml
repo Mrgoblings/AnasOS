@@ -10,6 +10,7 @@ build = "build.rs"
 volatile = "0.2.6"
 spin = "0.9.8"
 x86_64 = "0.14.12"
+pic8259 = "0.10.1"
 
 [dependencies.lazy_static]
 version = "1.0"

@@ -7,6 +7,7 @@ name = "anasos-kernel"
 version = "1.1.0"
 dependencies = [
  "lazy_static",
+ "pic8259",
  "spin",
  "volatile 0.2.7",
  "x86_64",
@@ -47,6 +48,15 @@ checksum = "07af8b9cdd281b7915f413fa73f29ebd5d55d0d3f0155584dade1ff18cea1b17"
 dependencies = [
  "autocfg",
  "scopeguard",
+]
+
+[[package]]
+name = "pic8259"
+version = "0.10.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cb844b5b01db1e0b17938685738f113bfc903846f18932b378bc0eabfa40e194"
+dependencies = [
+ "x86_64",
 ]
 
 [[package]]
