@@ -125,7 +125,7 @@ page_table_l3:
 page_table_l2:
     RESB 4096
 stack_bottom:
-    RESB 4096 * 4 ; bytes reserved for stack
+    RESB 4096 * 5 ; bytes reserved for stack (5 pages)
 stack_top:
 
 SECTION .rodata

@@ -2,17 +2,21 @@
 #![no_main]
 
 use core::panic::PanicInfo;
-mod vga;
-
+use anasos_kernel::{ println, init, hlt };
 
 #[no_mangle]
 pub extern "C" fn _start() -> ! {
     println!("Hello World{}", "!");
-    loop {}
+
+    init(); 
+
+    println!("Still Alive!");
+
+    hlt();
 }
 
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
     println!("{}", info);
-    loop {}
+    anasos_kernel::hlt();
 }
