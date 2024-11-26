@@ -2,17 +2,17 @@
 #![no_main]
 
 use core::panic::PanicInfo;
-use anasos_kernel::{println, print};
+use anasos_kernel::{ println, init, hlt };
 
 #[no_mangle]
 pub extern "C" fn _start() -> ! {
     println!("Hello World{}", "!");
 
-    anasos_kernel::init(); 
+    init(); 
 
     println!("Still Alive!");
 
-    anasos_kernel::hlt();
+    hlt();
 }
 
 #[panic_handler]
