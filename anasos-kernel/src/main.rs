@@ -12,7 +12,6 @@ entry_point!(kernel_main);
 
 // mod paging;
 
-#[no_mangle]
 pub fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
     println!("Hello World{}", "!");
 
