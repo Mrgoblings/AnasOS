@@ -4,11 +4,25 @@
 use core::panic::PanicInfo;
 use anasos_kernel::{ println, init, hlt };
 
+// make the module accessible to the bootloader
+
+use bootloader::{BootInfo, entry_point};
+
+entry_point!(kernel_main);
+
+// mod paging;
+
 #[no_mangle]
-pub extern "C" fn _start() -> ! {
+pub fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
     println!("Hello World{}", "!");
 
-    init(); 
+    init();
+
+    use x86_64::registers::control::Cr3;
+
+    let (level_4_page_table, _) = Cr3::read();
+    println!("Level 4 page table at: {:?}", level_4_page_table.start_address());
+
 
     println!("Still Alive!");
 

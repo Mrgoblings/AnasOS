@@ -6,6 +6,7 @@ version = 4
 name = "anasos-kernel"
 version = "1.1.0"
 dependencies = [
+ "bootloader",
  "lazy_static",
  "pc-keyboard",
  "pic8259",
@@ -31,6 +32,12 @@ name = "bitflags"
 version = "2.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b048fb63fd8b5923fc5aa7b340d8e156aec7ec02f0c78fa8a6ddc2613f6f71de"
+
+[[package]]
+name = "bootloader"
+version = "0.10.13"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "24e13520aa8580a2850fc9f5390dc6753f1062fb66f90e5a61bd5c72b55df731"
 
 [[package]]
 name = "lazy_static"
