@@ -1,68 +1,78 @@
-name: 'Documentation Sync'
+# This workflow is based on the "fss-fmi/sugaming" workflow for synchronizing documentation from the following repository:
+# https://github.com/fss-fmi/sugaming/blob/main/.github/workflows/documentation-sync.yaml
+
+name: "Documentation Sync"
 
 on:
   push:
     branches:
       - main
     paths:
-      - 'docs/**'
+      - "docs/**"
   repository_dispatch:
     types: [docs]
   gollum:
 
+env:
+  GIT_AUTHOR_NAME: ${{ github.actor }}
+  GIT_AUTHOR_EMAIL: ${{ secrets.EMAIL }}
+
+permissions:
+  contents: write
+
 jobs:
   sync-repository-to-wiki:
-    name: 'Sync repository to wiki'
+    name: "Sync repository to wiki"
     runs-on: ubuntu-latest
     if: github.event_name != 'gollum'
 
     steps:
-      - name: Checkout
+      - name: Checkout Repository
         uses: actions/checkout@v3
 
       - name: Set Commit Message
         run: |
-          # Use only the heading of the commit message
-          echo COMMIT_MESSAGE="${{ github.event.head_commit.message }}" | cut -d$'\n' -f1 >> $GITHUB_ENV
+          echo "COMMIT_MESSAGE=${{ github.event.head_commit.message }}" | cut -d$'\n' -f1 >> $GITHUB_ENV
 
       - name: Sync docs to wiki
         uses: newrelic/wiki-sync-action@main
         with:
           source: docs
           destination: wiki
-          token: ${{ secrets.GITHUB_TOKEN }}
-          gitAuthorName: ${{ github.actor }}
-          gitAuthorEmail: "${{ github.actor }}@users.noreply.github.com"
-          commitMessage: |-
-            ${{ env.COMMIT_MESSAGE }}
+          token: ${{ secrets.TOKEN }}
+          gitAuthorName: ${{ env.GIT_AUTHOR_NAME }}
+          gitAuthorEmail: ${{ env.GIT_AUTHOR_EMAIL }}
+          branch: main
+          commitMessage: ${{ env.COMMIT_MESSAGE }}
 
   sync-wiki-to-repository:
-    name: 'Sync wiki to repository'
+    name: "Sync wiki to repository"
     runs-on: ubuntu-latest
     if: github.event_name == 'gollum'
 
     steps:
-      - name: Checkout
+      - name: Checkout Repository
         uses: actions/checkout@v3
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.TOKEN }}
           ref: main
 
       - name: Set Commit Message
         run: |
-          if [ ${{ github.event.pages[0].summary }} ];
-          then echo COMMIT_MESSAGE="${{ github.event.pages[0].summary }}" >> $GITHUB_ENV;
-          else echo COMMIT_MESSAGE="docs: sync wiki pages to the repository" >> $GITHUB_ENV;
+          if [ "${{ github.event.pages[0].summary }}" ]; then
+            echo "COMMIT_MESSAGE=${{ github.event.pages[0].summary }}" >> $GITHUB_ENV
+          else
+            echo "COMMIT_MESSAGE=docs: sync wiki pages to the repository" >> $GITHUB_ENV
           fi
 
       - name: Sync wiki to docs
         uses: newrelic/wiki-sync-action@main
         with:
           source: wiki
-          destination: docs/wiki
-          token: ${{ secrets.GITHUB_TOKEN }}
-          gitAuthorName: ${{ github.actor }}
-          gitAuthorEmail: "${{ github.actor }}@users.noreply.github.com"
+          destination: docs
+          token: ${{ secrets.TOKEN }}
+          gitAuthorName: ${{ env.GIT_AUTHOR_NAME }}
+          gitAuthorEmail: ${{ env.GIT_AUTHOR_EMAIL }}
           branch: main
           commitMessage: |-
             ${{ env.COMMIT_MESSAGE }}
