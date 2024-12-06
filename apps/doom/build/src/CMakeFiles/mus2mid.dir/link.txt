@@ -1,0 +1,1 @@
+/usr/bin/cc CMakeFiles/mus2mid.dir/mus2mid.c.o CMakeFiles/mus2mid.dir/memio.c.o CMakeFiles/mus2mid.dir/z_native.c.o CMakeFiles/mus2mid.dir/i_system.c.o CMakeFiles/mus2mid.dir/m_argv.c.o CMakeFiles/mus2mid.dir/m_misc.c.o CMakeFiles/mus2mid.dir/d_iwad.c.o CMakeFiles/mus2mid.dir/deh_str.c.o CMakeFiles/mus2mid.dir/m_config.c.o -o mus2mid  /usr/lib/libSDL2-2.0.so.0.3000.9

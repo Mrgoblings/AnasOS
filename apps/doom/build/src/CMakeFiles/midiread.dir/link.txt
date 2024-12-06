@@ -1,0 +1,1 @@
+/usr/bin/cc CMakeFiles/midiread.dir/midifile.c.o CMakeFiles/midiread.dir/z_native.c.o CMakeFiles/midiread.dir/i_system.c.o CMakeFiles/midiread.dir/m_argv.c.o CMakeFiles/midiread.dir/m_misc.c.o CMakeFiles/midiread.dir/d_iwad.c.o CMakeFiles/midiread.dir/deh_str.c.o CMakeFiles/midiread.dir/m_config.c.o -o midiread  /usr/lib/libSDL2-2.0.so.0.3000.9

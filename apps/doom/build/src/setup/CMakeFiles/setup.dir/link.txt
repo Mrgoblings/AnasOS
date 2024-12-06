@@ -1,0 +1,2 @@
+/usr/bin/ar qc libsetup.a CMakeFiles/setup.dir/compatibility.c.o CMakeFiles/setup.dir/display.c.o CMakeFiles/setup.dir/joystick.c.o CMakeFiles/setup.dir/keyboard.c.o CMakeFiles/setup.dir/mainmenu.c.o CMakeFiles/setup.dir/mode.c.o CMakeFiles/setup.dir/mouse.c.o CMakeFiles/setup.dir/multiplayer.c.o CMakeFiles/setup.dir/sound.c.o CMakeFiles/setup.dir/execute.c.o CMakeFiles/setup.dir/txt_joyaxis.c.o CMakeFiles/setup.dir/txt_joybinput.c.o CMakeFiles/setup.dir/txt_keyinput.c.o CMakeFiles/setup.dir/txt_mouseinput.c.o
+/usr/bin/ranlib libsetup.a
