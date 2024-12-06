@@ -11,3 +11,6 @@ preinstall/arch:
 
 preinstall/debian:
 	sudo apt install build-essential cmake libsdl2-dev libsdl2-mixer-dev
+
+clean:
+	rm -rf build
