@@ -61,26 +61,33 @@ check_long_mode:
     JMP error
 
 setup_page_tables:
-    ; identity maping (a phisical addres is linked to the same virtual addres)
-    
+    ; Identity mapping: each virtual address maps to the same physical address
+
+    ; Initialize the level 4 page table
     MOV eax, page_table_l3
     OR eax, 0b11 ; present, writable
     MOV [page_table_l4], eax
 
+    ; Initialize the level 3 page table
     MOV eax, page_table_l2
     OR eax, 0b11 ; present, writable
     MOV [page_table_l3], eax
 
+    ; Initialize the level 2 page table
+    MOV eax, page_table_l1
+    OR eax, 0b11 ; present, writable
+    MOV [page_table_l2], eax
+
+    ; Fill the level 1 page table with 4 KiB page mappings
     MOV ecx, 0 ; counter
 .loop_setup_page_tables:
-
-    MOV eax, 0x200000  ; 2MiB
-    MUL ecx
-    OR eax, 0b10000011 ; huge-page, present, writable
-    MOV [page_table_l2 + ecx * 8], eax
+    MOV eax, 0x1000  ; 4 KiB
+    MUL ecx          ; calculate physical address
+    OR eax, 0b11     ; present, writable
+    MOV [page_table_l1 + ecx * 8], eax
 
     INC ecx
-    CMP ecx, 512 ; checks if the whole table is mapped
+    CMP ecx, 512 ; fill all entries in level 1 page table (512 * 4 KiB = 2 MiB)
     JNE .loop_setup_page_tables
 
     RET
@@ -124,6 +131,8 @@ page_table_l3:
     RESB 4096
 page_table_l2:
     RESB 4096
+page_table_l1:
+    RESB 4096 * 512 ; full page table
 stack_bottom:
     RESB 4096 * 5 ; bytes reserved for stack (5 pages)
 stack_top:
