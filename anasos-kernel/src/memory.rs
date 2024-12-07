@@ -1,10 +1,19 @@
+use bootloader::bootinfo::{MemoryMap, MemoryRegionType};
+
 use x86_64::{
-    structures::paging::PageTable,
+    structures::paging::{
+        OffsetPageTable,
+        PageTable,
+        Page, 
+        PhysFrame, 
+        Mapper, 
+        Size4KiB, 
+        FrameAllocator
+    },
     VirtAddr,
     PhysAddr,
 };
 
-use x86_64::structures::paging::OffsetPageTable;
 
 /// Initialize a new OffsetPageTable.
 ///
@@ -32,9 +41,6 @@ unsafe fn active_level_4_table(physical_memory_offset: VirtAddr)
 
     &mut *page_table_ptr // unsafe
 }
-
-use x86_64::structures::paging::{ Page, PhysFrame, Mapper, Size4KiB, FrameAllocator };
-
 
 /// Creates an example mapping for the given page to frame `0xb8000`.
 pub fn create_example_mapping(
@@ -64,8 +70,6 @@ unsafe impl FrameAllocator<Size4KiB> for EmptyFrameAllocator {
     }
 }
 
-use bootloader::boot_info::MemoryMap;
-
 /// A FrameAllocator that returns usable frames from the bootloader's memory map.
 pub struct BootInfoFrameAllocator {
     memory_map: &'static MemoryMap,
@@ -86,8 +90,6 @@ impl BootInfoFrameAllocator {
     }
 }
 
-
-use bootloader::boot_info::MemoryRegionType;
 
 impl BootInfoFrameAllocator {
     /// Returns an iterator over the usable frames specified in the memory map.

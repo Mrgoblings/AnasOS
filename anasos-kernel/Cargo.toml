@@ -12,7 +12,7 @@ spin = "0.9.8"
 x86_64 = "0.14.12"
 pic8259 = "0.10.1"
 pc-keyboard = "0.7.0"
-bootloader = "0.10.0"
+bootloader = {version = "0.9", features = ["map_physical_memory"] }
 
 [dependencies.lazy_static]
 version = "1.0"

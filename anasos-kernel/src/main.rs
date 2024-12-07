@@ -2,6 +2,7 @@
 #![no_main]
 
 use core::panic::PanicInfo;
+
 use anasos_kernel::{ 
     println, 
     init, 
@@ -15,13 +16,13 @@ use bootloader::{BootInfo, entry_point};
 entry_point!(kernel_main);
 
 
-pub fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
+pub fn kernel_main(boot_info: &'static BootInfo) -> ! {
     
     println!("Hello World{}", "!");
 
     init();
 
-    let phys_mem_offset = VirtAddr::new(boot_info.physical_memory_offset.into_option().unwrap());
+    let phys_mem_offset = VirtAddr::new(boot_info.physical_memory_offset);
     let mut mapper = unsafe { memory::init(phys_mem_offset) };
     let mut frame_allocator = memory::EmptyFrameAllocator;
 
