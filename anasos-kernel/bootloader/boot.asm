@@ -61,40 +61,43 @@ check_long_mode:
     JMP error
 
 setup_page_tables:
-    ; Identity mapping: each virtual address maps to the same physical address
+    ; Identity mapping: map each virtual address to the same physical address
 
     ; Initialize the level 4 page table
-    MOV eax, page_table_l3
+    MOV eax, PDPT - PML4
+    MOV ebx, PML4
+    AND ebx, 0xFFFFF000
+    ADD eax, ebx
     OR eax, 0b11 ; present, writable
-    MOV [page_table_l4], eax
+    MOV [PML4], eax
 
     ; Initialize the level 3 page table
-    MOV eax, page_table_l2
+    MOV eax, PD
     OR eax, 0b11 ; present, writable
-    MOV [page_table_l3], eax
+    MOV [PDPT], eax
 
     ; Initialize the level 2 page table
-    MOV eax, page_table_l1
+    MOV eax, PT
     OR eax, 0b11 ; present, writable
-    MOV [page_table_l2], eax
+    MOV [PD], eax
 
     ; Fill the level 1 page table with 4 KiB page mappings
     MOV ecx, 0 ; counter
 .loop_setup_page_tables:
-    MOV eax, 0x1000  ; 4 KiB
-    MUL ecx          ; calculate physical address
-    OR eax, 0b11     ; present, writable
-    MOV [page_table_l1 + ecx * 8], eax
+    MOV eax, ecx            ; Virtual address index
+    SHL eax, 12             ; Calculate physical address (4 KB per entry)
+    OR eax, 0b11            ; Present, writable
+    MOV [PT + ecx * 8], eax ; Write entry to level 1 page table
 
     INC ecx
-    CMP ecx, 512 ; fill all entries in level 1 page table (512 * 4 KiB = 2 MiB)
-    JNE .loop_setup_page_tables
+    CMP ecx, 512            ; Fill all 512 entries (2 MB)
+    JL .loop_setup_page_tables
 
     RET
 
 enable_paging:
     ; pass the page table location to the cpu
-    MOV eax, page_table_l4
+    MOV eax, PML4
     MOV cr3, eax
 
     ; enable Phisical Address Extension (PAE)
@@ -125,13 +128,13 @@ error:
 
 SECTION .bss
 ALIGN 4096
-page_table_l4:
+PML4:
     RESB 4096
-page_table_l3:
+PDPT:
     RESB 4096
-page_table_l2:
+PD:
     RESB 4096
-page_table_l1:
+PT:
     RESB 4096 * 512 ; full page table
 stack_bottom:
     RESB 4096 * 5 ; bytes reserved for stack (5 pages)
