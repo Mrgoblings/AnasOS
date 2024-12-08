@@ -55,7 +55,6 @@ impl FixedSizeBlockAllocator {
     }
 }
 
-
 /// Choose an appropriate block size for the given layout.
 ///
 /// Returns an index into the `BLOCK_SIZES` array.
@@ -63,8 +62,6 @@ fn list_index(layout: &Layout) -> Option<usize> {
     let required_block_size = layout.size().max(layout.align());
     BLOCK_SIZES.iter().position(|&s| s >= required_block_size)
 }
-
-
 
 unsafe impl GlobalAlloc for Locked<FixedSizeBlockAllocator> {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
