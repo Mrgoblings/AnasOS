@@ -6,13 +6,14 @@
 #![test_runner(crate::test_runner)]
 #![reexport_test_harness_main = "test_main"]
 
-extern crate alloc;
-pub mod allocator;
+// extern crate alloc;
+// pub mod allocator;
 
 pub mod interrupts;
 pub mod vga;
 pub mod gdt;
-pub mod memory;
+// pub mod memory_map;
+// pub mod memory;
 
 pub fn init() {
     gdt::init();
@@ -28,13 +29,15 @@ pub fn hlt() -> ! {
 }
 
 #[cfg(test)]
-use bootloader::{entry_point, BootInfo};
+// use bootloader::{entry_point, BootInfo};
 
 #[cfg(test)]
-entry_point!(test_kernel_main);
+// entry_point!(test_kernel_main);
 
 #[cfg(test)]
-pub fn test_kernel_main(_boot_info: &'static BootInfo) -> ! {
+#[no_mangle]
+// pub fn test_kernel_main(_boot_info: &'static BootInfo) -> ! {
+pub extern "C" fn _start() -> ! {
     init();
     test_main();
     hlt();

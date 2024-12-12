@@ -1,10 +1,13 @@
 GLOBAL start
 EXTERN long_mode_start
+EXTERN save_boot_info
 
 SECTION .text
 BITS 32
 
 start:
+    ; CALL save_boot_info
+
     MOV esp, stack_top
     CALL check_multiboot
     CALL check_cpuid
