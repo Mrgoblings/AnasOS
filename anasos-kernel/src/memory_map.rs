@@ -3,10 +3,7 @@
 
 use bootloader_x86_64_bios_common::E820MemoryRegion;
 
-use core::{
-    arch::asm, 
-    ptr
-};
+use core::arch::asm;
 
 use lazy_static::lazy_static;
 use spin::Mutex;
@@ -43,7 +40,7 @@ fn query_memory_map() -> Result<&'static mut [E820MemoryRegion], ()> {
         acpi_extended_attributes: 0,
     }; 128];
 
-    let memory_map = unsafe { &mut MEMORY_MAP_BUFFER } as *mut _ as *mut E820MemoryRegion;
+    let memory_map = unsafe { &mut MEMORY_MAP_BUFFER };
 
     let mut i = 0;
     let mut offset = 0;
@@ -79,25 +76,23 @@ fn query_memory_map() -> Result<&'static mut [E820MemoryRegion], ()> {
 
             let len = u64::from_ne_bytes(len_raw);
             if len != 0 {
-                unsafe { 
-                    let memory_map_ptr = memory_map.wrapping_add(i);
-                    ptr::write(memory_map_ptr, E820MemoryRegion {
-                        start_addr: u64::from_ne_bytes(base_raw),
-                        len,
-                        region_type: u32::from_ne_bytes(kind_raw),
-                        acpi_extended_attributes: u32::from_ne_bytes(acpi_extended_raw),
-                    });
-                }
+                memory_map[i] = E820MemoryRegion {
+                    start_addr: u64::from_ne_bytes(base_raw),
+                    len,
+                    region_type: u32::from_ne_bytes(kind_raw),
+                    acpi_extended_attributes: u32::from_ne_bytes(acpi_extended_raw),
+                };
                 i += 1;
             }
         }
+
 
         if offset == 0 {
             break;
         }
     }
 
-    Ok(&mut unsafe { &mut *memory_map }[..i])
+    Ok(&mut memory_map[..i])
 }
 
 fn split_array_ref<const N: usize, T>(slice: &[T]) -> (&[T; N], &[T]) {
