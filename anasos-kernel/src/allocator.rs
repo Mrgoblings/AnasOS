@@ -1,5 +1,3 @@
-use alloc::alloc::{GlobalAlloc, Layout};
-use core::ptr::null_mut;
 use fixed_size_block::FixedSizeBlockAllocator;
 use x86_64::{
     structures::paging::{
@@ -60,9 +58,9 @@ impl<A> Locked<A> {
     }
 }
 
-/// Align the given address `addr` upwards to alignment `align`.
-///
-/// Requires that `align` is a power of two.
-fn align_up(addr: usize, align: usize) -> usize {
-    (addr + align - 1) & !(align - 1)
-}
+// /// Align the given address `addr` upwards to alignment `align`.
+// ///
+// /// Requires that `align` is a power of two.
+// fn align_up(addr: usize, align: usize) -> usize {
+//     (addr + align - 1) & !(align - 1)
+// }

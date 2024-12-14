@@ -32,8 +32,10 @@ pub struct BootInfo {
     /// used by the kernel.
     pub memory_map: MemoryMap,
     /// The virtual address of the recursively mapped level 4 page table.
-    #[cfg(feature = "recursive_page_table")]
-    pub recursive_page_table_addr: u64,
+    
+    // #[cfg(feature = "recursive_page_table")]
+    // pub recursive_page_table_addr: u64,
+    
     /// The offset into the virtual address space where the physical memory is mapped.
     ///
     /// Physical addresses can be converted to virtual addresses by adding this offset to them.
@@ -42,7 +44,6 @@ pub struct BootInfo {
     /// frames that are also mapped at other virtual addresses can easily break memory safety and
     /// cause undefined behavior. Only frames reported as `USABLE` by the memory map in the `BootInfo`
     /// can be safely accessed.
-    #[cfg(feature = "map_physical_memory")]
     pub physical_memory_offset: u64,
     tls_template: TlsTemplate,
     _non_exhaustive: u8, // `()` is not FFI safe
@@ -66,9 +67,8 @@ impl BootInfo {
         BootInfo {
             memory_map,
             tls_template,
-            #[cfg(feature = "recursive_page_table")]
-            recursive_page_table_addr,
-            #[cfg(feature = "map_physical_memory")]
+            // #[cfg(feature = "recursive_page_table")]
+            // recursive_page_table_addr,
             physical_memory_offset,
             _non_exhaustive: 0,
         }
@@ -88,11 +88,11 @@ impl BootInfo {
         }
     }
 
-    /// Returns the index into the page tables that recursively maps the page tables themselves.
-    #[cfg(feature = "recursive_page_table")]
-    pub fn recursive_index(&self) -> u16 {
-        ((self.recursive_page_table_addr >> 12) & 0x1FF) as u16
-    }
+    // /// Returns the index into the page tables that recursively maps the page tables themselves.
+    // #[cfg(feature = "recursive_page_table")]
+    // pub fn recursive_index(&self) -> u16 {
+    //     ((self.recursive_page_table_addr >> 12) & 0x1FF) as u16
+    // }
 }
 
 /// Information about the thread local storage (TLS) template.
