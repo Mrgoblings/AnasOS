@@ -6,14 +6,14 @@
 #![test_runner(crate::test_runner)]
 #![reexport_test_harness_main = "test_main"]
 
-// extern crate alloc;
-// pub mod allocator;
+extern crate alloc;
+pub mod allocator;
 
 pub mod interrupts;
 pub mod vga;
 pub mod gdt;
-pub mod memory_map;
-// pub mod memory;
+pub mod boot_info;
+pub mod memory;
 
 pub fn init() {
     gdt::init();
