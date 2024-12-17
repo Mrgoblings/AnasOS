@@ -16,10 +16,11 @@ fn main() {
     let target_dir: String = env::var("OUT_DIR").unwrap(); 
 
     let asm_files = ["boot.asm", "boot-64.asm", "header.asm"];
+    // let asm_files = ["*.asm"];
 
     for file in &asm_files {
         let input_path: String = format!("bootloader/{}", file);
-        let output_path: String = format!("{}/{}.o", target_dir, file.strip_suffix(".asm").unwrap());
+        let output_path: String = format!("{}/{}.o", target_dir, file);
         
         assemble_file(&input_path, &output_path);
         println!("cargo:rustc-link-arg={}", output_path);
