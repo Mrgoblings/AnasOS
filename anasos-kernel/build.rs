@@ -15,17 +15,18 @@ fn assemble_file(input: &str, output: &str) {
 fn main() {
     let target_dir: String = env::var("OUT_DIR").unwrap(); 
 
-    let boot_o_path: String = format!("{}/boot.o", target_dir);
-    let boot_64_o_path: String = format!("{}/boot-64.o", target_dir);
-    let header_o_path = format!("{}/header.o", target_dir);
+    let asm_files = [
+        ("bootloader/boot.asm", "boot.o"),
+        ("bootloader/boot-64.asm", "boot-64.o"),
+        ("bootloader/header.asm", "header.o"),
+    ];
 
-    assemble_file("bootloader/boot.asm", &boot_o_path);
-    assemble_file("bootloader/boot-64.asm", &boot_64_o_path);
-    assemble_file("bootloader/header.asm", &header_o_path);
-
+    for (input, output) in &asm_files {
+        let output_path = format!("{}/{}", target_dir, output);
+        assemble_file(input, &output_path);
+        println!("cargo:rustc-link-arg={}", output_path);
+    }
+    
     // Custom linker arguments
     println!("cargo:rustc-link-arg=-Tlinker.ld");
-    println!("cargo:rustc-link-arg={}", boot_o_path);
-    println!("cargo:rustc-link-arg={}", boot_64_o_path);
-    println!("cargo:rustc-link-arg={}", header_o_path);
 }
