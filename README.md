@@ -23,14 +23,10 @@ git clone https://github.com/Mrgoblings/AnasOS.git
 cd AnasOS
 ```
 
-2. **Install dependencies**:
+2. **Install dependencies in `Debian` based distros with the `apt` packet manager**:
 
 ```sh
-sudo apt update
-sudo apt install -y nasm grub-pc-bin grub-common make mtools xorriso
-rustup update nightly
-rustup target add x86_64-unknown-none --toolchain nightly
-rustup component add rust-src --toolchain nightly-x86_64-unknown-linux-gnu
+./install_dependencies.sh
 ```
 
 3. **Build & Run the OS in qemu**:

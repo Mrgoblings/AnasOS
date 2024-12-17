@@ -36,7 +36,6 @@ pub fn hlt() -> ! {
 
 #[cfg(test)]
 #[no_mangle]
-// pub fn test_kernel_main(_boot_info: &'static BootInfo) -> ! {
 pub extern "C" fn _start() -> ! {
     init();
     test_main();
