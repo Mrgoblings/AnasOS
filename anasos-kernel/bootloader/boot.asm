@@ -1,4 +1,8 @@
 GLOBAL start
+
+GLOBAL heap_bottom
+GLOBAL heap_top
+
 EXTERN long_mode_start
 EXTERN save_boot_info
 
@@ -157,6 +161,9 @@ PT:
 stack_bottom:
     RESB 4096 * 5 ; bytes reserved for stack (5 pages)
 stack_top:
+heap_bottom:
+    RESB 100 * 1024 ; 100 KiB reserved for heap
+heap_top:
 
 SECTION .rodata
 gdt64:
