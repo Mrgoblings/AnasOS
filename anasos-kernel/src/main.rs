@@ -11,14 +11,14 @@ use anasos_kernel::{
 };
 use x86_64::VirtAddr;
 
+// Symbols defined in `linker.ld`
+
+
 #[no_mangle]
 pub extern "C" fn _start() -> ! {
-    let memory_map: MemoryMap = bootinfo::create_from(memory_map_addr, memory_map_entry_count);
-    let tls_template: Option<TlsTemplate> = /* initialize tls_template */;
-    let recursive_page_table_addr: u64 = /* initialize recursive_page_table_addr */;
-    let physical_memory_offset: u64 = /* initialize physical_memory_offset */;
+    let boot_info: &BootInfo = BootInfo::get();
+    boot_info.memory_map.sort();
 
-    let boot_info: &BootInfo = &BootInfo::new(memory_map, tls_template, recursive_page_table_addr, physical_memory_offset);
     println!("boot_info: {:?}", boot_info);
 
     #[cfg(notest)]
