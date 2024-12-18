@@ -10,7 +10,8 @@ test: no-run
 	echo "Compiled the OS successfully"
 
 kernel-rust:
-	@cd ./anasos-kernel && cargo build --release
+	@cd ./anasos-kernel && \
+	cargo build --release
 
 image:
 	@cp  ./anasos-kernel/target/x86_64-unknown-none/release/anasos-kernel AnasOS/boot/kernel
