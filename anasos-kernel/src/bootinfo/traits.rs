@@ -4,9 +4,10 @@
 
 #![deny(improper_ctypes)]
 
-pub use self::memory_map::*;
+use crate::{print, println};
 
-mod memory_map;
+use super::memory_map::MemoryMap;
+
 
 /// This structure represents the information that the bootloader passes to the kernel.
 ///
@@ -59,6 +60,7 @@ impl BootInfo {
         recursive_page_table_addr: u64,
         physical_memory_offset: u64,
     ) -> Self {
+        println!("tls_template: {:?}", tls_template);
         let tls_template = tls_template.unwrap_or(TlsTemplate {
             start_addr: 0,
             file_size: 0,

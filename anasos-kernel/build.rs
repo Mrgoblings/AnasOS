@@ -16,7 +16,6 @@ fn main() {
     let target_dir: String = env::var("OUT_DIR").unwrap(); 
 
     let asm_files = ["boot.asm", "boot-64.asm", "header.asm"];
-    // let asm_files = ["*.asm"];
 
     for file in &asm_files {
         let input_path: String = format!("bootloader/{}", file);

@@ -12,6 +12,7 @@ dependencies = [
  "pc-keyboard",
  "pic8259",
  "spin",
+ "usize_conversions",
  "volatile 0.2.7",
  "x86_64",
 ]
@@ -112,6 +113,12 @@ checksum = "5b9eb1a2f4c41445a3a0ff9abc5221c5fcd28e1f13cd7c0397706f9ac938ddb0"
 dependencies = [
  "lock_api",
 ]
+
+[[package]]
+name = "usize_conversions"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f70329e2cbe45d6c97a5112daad40c34cd9a4e18edb5a2a18fefeb584d8d25e5"
 
 [[package]]
 name = "volatile"

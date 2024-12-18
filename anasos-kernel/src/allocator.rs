@@ -6,6 +6,8 @@ use x86_64::{
     VirtAddr,
 };
 
+use crate::println;
+
 pub mod fixed_size_block;
 
 unsafe extern "C" {
@@ -37,6 +39,7 @@ pub fn init_heap(
     };
 
     for page in page_range {
+        println!("Page {:?}", page);
         let frame = frame_allocator
             .allocate_frame()
             .ok_or(MapToError::FrameAllocationFailed)?;
