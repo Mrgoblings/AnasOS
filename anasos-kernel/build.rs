@@ -1,3 +1,8 @@
+/*
+    This file is inspired by:
+    https://github.com/rust-osdev/bootloader/blob/v0.9.25/build.rs
+*/
+
 use std::env;
 use std::fs::File;
 use std::io::Write;

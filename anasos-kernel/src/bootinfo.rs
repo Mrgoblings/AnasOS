@@ -1,10 +1,10 @@
 //FROM https://github.com/rust-osdev/bootloader/blob/v0.9.25/src/boot_info.rs#L7
 use core::slice;
 
-use memory_map::{MemoryMap, MemoryRegion, MemoryRegionType, E820MemoryRegion};
+use fixedvec::{alloc_stack, FixedVec};
+use memory_map::{E820MemoryRegion, FrameRange, MemoryMap, MemoryRegion, MemoryRegionType};
 use traits::BootInfo;
 use usize_conversions::usize_from;
-use fixedvec::FixedVec;
 
 use x86_64::structures::paging::{
     frame::PhysFrameRange, page_table::PageTableEntry, Mapper, Page, PageTable, PageTableFlags,
@@ -12,11 +12,13 @@ use x86_64::structures::paging::{
 };
 use x86_64::{PhysAddr, VirtAddr};
 
+use xmas_elf::program::ProgramHeader64;
 
-pub mod memory_map;
-pub mod traits;
+pub mod frame_allocator;
 pub mod level4_entries;
+pub mod memory_map;
 pub mod page_table;
+pub mod traits;
 
 pub fn create_from(memory_map_addr: VirtAddr, entry_count: u64) -> MemoryMap {
     let memory_map_start_ptr = usize_from(memory_map_addr.as_u64()) as *const E820MemoryRegion;
@@ -43,7 +45,6 @@ pub fn create_from(memory_map_addr: VirtAddr, entry_count: u64) -> MemoryMap {
 
     memory_map
 }
-
 
 pub struct IdentityMappedAddr(PhysAddr);
 
@@ -83,14 +84,13 @@ unsafe extern "C" {
     unsafe static _p4: usize;
 }
 
-
 pub unsafe fn get() -> BootInfo {
-
+    let mut preallocated_space = alloc_stack!([ProgramHeader64; 32]);
     let mut segments = FixedVec::new(&mut preallocated_space);
 
     // Mark used virtual addresses
-    let mut level4_entries: level4_entries::UsedLevel4Entries = level4_entries::UsedLevel4Entries::new(&segments);
-
+    let mut level4_entries: level4_entries::UsedLevel4Entries =
+        level4_entries::UsedLevel4Entries::new(&segments);
 
     let kernel_start = IdentityMappedAddr(PhysAddr::new(0x400000));
     let memory_map_addr = &_memory_map as *const _ as u64;
@@ -100,8 +100,9 @@ pub unsafe fn get() -> BootInfo {
     let bootloader_start = &__bootloader_start as *const _ as u64;
     let bootloader_end = &__bootloader_end as *const _ as u64;
     let p4_physical = &_p4 as *const _ as u64;
-    
-    let memory_map: MemoryMap = create_from(VirtAddr::new(memory_map_addr), memory_map_entry_count);
+
+    let mut memory_map: MemoryMap =
+        create_from(VirtAddr::new(memory_map_addr), memory_map_entry_count);
 
     let max_phys_addr: u64 = memory_map
         .iter()
@@ -109,10 +110,8 @@ pub unsafe fn get() -> BootInfo {
         .max()
         .expect("no physical memory regions found");
 
-
-    
     let recursive_index =
-    PageTableIndex::new(level4_entries.get_free_entries(1).try_into().unwrap());
+        PageTableIndex::new(level4_entries.get_free_entries(1).try_into().unwrap());
     let recursive_page_table_addr = Page::from_page_table_indices(
         recursive_index,
         recursive_index,
@@ -124,11 +123,16 @@ pub unsafe fn get() -> BootInfo {
     let mut rec_page_table: RecursivePageTable<'_> =
         RecursivePageTable::new(page_table).expect("recursive page table creation failed");
 
-
-
+    // Create a frame allocator, which marks allocated frames as used in the memory map.
+    let mut frame_allocator: frame_allocator::FrameAllocator<'_> =
+        frame_allocator::FrameAllocator {
+            memory_map: &mut memory_map,
+        };
 
     // Map a page for the boot info structure
-    let boot_info_page = get_boot_info_page(level4_entries, rec_page_table);
+    let boot_info_page =
+        get_boot_info_page(&mut level4_entries, &mut rec_page_table, &mut frame_allocator);
+
     // If no kernel stack address is provided, map the kernel stack after the boot info page
     let kernel_stack_address = match KERNEL_STACK_ADDRESS {
         Some(addr) => Page::containing_address(VirtAddr::new(addr)),
@@ -145,18 +149,30 @@ pub unsafe fn get() -> BootInfo {
     )
     .expect("kernel mapping failed");
 
+    let physical_memory_offset = get_physical_memory_offset(
+        &mut level4_entries,
+        &mut rec_page_table,
+        max_phys_addr,
+        &mut frame_allocator,
+    );
 
+    let mut bootinfo = BootInfo::new(
+        memory_map,
+        kernel_memory_info.tls_segment,
+        recursive_page_table_addr.as_u64(),
+        physical_memory_offset,
+    );
+    bootinfo.memory_map.sort();
 
-
-
-    let physical_memory_offset = get_physical_memory_offset(level4_entries, rec_page_table, max_phys_addr);
-
-    BootInfo::new(memory_map, kernel_memory_info.tls_segment, recursive_page_table_addr.as_u64(), physical_memory_offset)
+    bootinfo
 }
 
 
-
-fn get_boot_info_page(mut level4_entries: level4_entries::UsedLevel4Entries, mut rec_page_table: RecursivePageTable<'_>) -> Page {
+fn get_boot_info_page(
+    level4_entries: &mut level4_entries::UsedLevel4Entries,
+    rec_page_table: &mut RecursivePageTable<'_>,
+    frame_allocator: &mut frame_allocator::FrameAllocator<'_>,
+) -> Page {
     let page: Page = match BOOT_INFO_ADDRESS {
         Some(addr) => Page::containing_address(VirtAddr::new(addr)),
         None => Page::from_page_table_indices(
@@ -175,8 +191,8 @@ fn get_boot_info_page(mut level4_entries: level4_entries::UsedLevel4Entries, mut
             page,
             frame,
             flags,
-            &mut rec_page_table,
-            &mut frame_allocator,
+            rec_page_table,
+            frame_allocator,
         )
     }
     .expect("Mapping of bootinfo page failed")
@@ -185,7 +201,12 @@ fn get_boot_info_page(mut level4_entries: level4_entries::UsedLevel4Entries, mut
 }
 
 
-fn get_physical_memory_offset(mut level4_entries: level4_entries::UsedLevel4Entries, mut rec_page_table: RecursivePageTable<'_>, max_phys_addr: u64) -> u64 {
+fn get_physical_memory_offset(
+    level4_entries: &mut level4_entries::UsedLevel4Entries,
+    rec_page_table: &mut RecursivePageTable<'_>,
+    max_phys_addr: u64,
+    frame_allocator: &mut frame_allocator::FrameAllocator<'_>,
+) -> u64 {
     let physical_memory_offset = PHYSICAL_MEMORY_OFFSET.unwrap_or_else(|| {
         const LEVEL_4_SIZE: u64 = 4096 * 512 * 512 * 512;
         let level_4_entries = (max_phys_addr + (LEVEL_4_SIZE - 1)) / LEVEL_4_SIZE;
@@ -211,8 +232,8 @@ fn get_physical_memory_offset(mut level4_entries: level4_entries::UsedLevel4Entr
                 page,
                 frame,
                 flags,
-                &mut rec_page_table,
-                &mut frame_allocator,
+                rec_page_table,
+                frame_allocator,
             )
         }
         .expect("Mapping of bootinfo page failed")
@@ -220,4 +241,18 @@ fn get_physical_memory_offset(mut level4_entries: level4_entries::UsedLevel4Entr
     }
 
     physical_memory_offset
+}
+
+fn phys_frame_range(range: FrameRange) -> PhysFrameRange {
+    PhysFrameRange {
+        start: PhysFrame::from_start_address(PhysAddr::new(range.start_addr())).unwrap(),
+        end: PhysFrame::from_start_address(PhysAddr::new(range.end_addr())).unwrap(),
+    }
+}
+
+fn frame_range(range: PhysFrameRange) -> FrameRange {
+    FrameRange::new(
+        range.start.start_address().as_u64(),
+        range.end.start_address().as_u64(),
+    )
 }

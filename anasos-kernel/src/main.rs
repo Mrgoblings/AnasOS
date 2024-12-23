@@ -4,10 +4,11 @@
 extern crate alloc;
 
 use alloc::{boxed::Box, rc::Rc, vec, vec::Vec};
+use lazy_static::lazy_static;
 use core::panic::PanicInfo;
 
 use anasos_kernel::{ 
-    allocator, bootinfo::{self, memory_map::MemoryMap, traits::{BootInfo, TlsTemplate}}, hlt, init, memory::{ self, BootInfoFrameAllocator}, println
+    allocator, bootinfo::{self, traits::{BootInfo, TlsTemplate}}, hlt, init, memory::{ self, BootInfoFrameAllocator}, println
 };
 use x86_64::VirtAddr;
 
@@ -16,16 +17,17 @@ use x86_64::VirtAddr;
 
 #[no_mangle]
 pub extern "C" fn _start() -> ! {
-    let boot_info: &BootInfo = BootInfo::get();
-    boot_info.memory_map.sort();
+    lazy_static! {
+        static ref BOOT_INFO: BootInfo = unsafe { bootinfo::get() };
+    }
 
-    println!("boot_info: {:?}", boot_info);
+    println!("boot_info: {:?}", *BOOT_INFO);
 
     #[cfg(notest)]
-    kernel_main(bootinfo);
+    kernel_main(&*BOOT_INFO);
 
     #[cfg(test)]
-    test_kernel_main(boot_info);
+    test_kernel_main(&*BOOT_INFO);
 
     hlt();
 }

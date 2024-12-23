@@ -1,6 +1,6 @@
 // FROM https://github.com/rust-osdev/bootloader/blob/v0.9.25/src/page_table.rs
 
-use crate::frame_allocator::FrameAllocator;
+use crate::bootinfo::frame_allocator::FrameAllocator;
 use crate::bootinfo::MemoryRegionType;
 use crate::bootinfo::traits::{TlsTemplate,};
 use fixedvec::FixedVec;
