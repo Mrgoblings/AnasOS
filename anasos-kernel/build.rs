@@ -39,7 +39,7 @@ fn main() {
     let target_dir = env::var("OUT_DIR").unwrap();
 
     // Assemble ASM files
-    let asm_files = ["boot.asm", "boot-64.asm", "header.asm"];
+    let asm_files = ["boot.asm", "boot-64.asm", "header.asm", "e820.asm"];
     for file in &asm_files {
         let input_path = format!("bootloader/{}", file);
         let output_path = format!("{}/{}.o", target_dir, file);

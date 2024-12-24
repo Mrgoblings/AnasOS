@@ -3,6 +3,13 @@ GLOBAL start
 GLOBAL heap_bottom
 GLOBAL heap_top
 
+GLOBAL PML4
+GLOBAL PDPT
+GLOBAL PD
+GLOBAL PT
+GLOBAL stack_bottom
+GLOBAL stack_top
+
 EXTERN long_mode_start
 EXTERN save_boot_info
 
@@ -152,7 +159,7 @@ SECTION .bss
 ALIGN 4096
 start_page_table:
 PML4:
-    RESB 4096                ; Level 4 Page Table
+    RESB 4096                ; Level 4 Page Table 512 entries by 8 bytes each
 PDPT:
     RESB 4096                ; Level 3 Page Table
 PD:

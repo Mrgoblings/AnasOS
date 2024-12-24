@@ -86,7 +86,7 @@ unsafe extern "C" {
 
 pub unsafe fn get() -> BootInfo {
     let mut preallocated_space = alloc_stack!([ProgramHeader64; 32]);
-    let mut segments = FixedVec::new(&mut preallocated_space);
+    let segments = FixedVec::new(&mut preallocated_space);
 
     // Mark used virtual addresses
     let mut level4_entries: level4_entries::UsedLevel4Entries =
@@ -95,11 +95,11 @@ pub unsafe fn get() -> BootInfo {
     let kernel_start = IdentityMappedAddr(PhysAddr::new(0x400000));
     let memory_map_addr = &_memory_map as *const _ as u64;
     let memory_map_entry_count = (mmap_ent & 0xff) as u64; // Extract lower 8 bits
-    let page_table_start = &__page_table_start as *const _ as u64;
-    let page_table_end = &__page_table_end as *const _ as u64;
-    let bootloader_start = &__bootloader_start as *const _ as u64;
-    let bootloader_end = &__bootloader_end as *const _ as u64;
-    let p4_physical = &_p4 as *const _ as u64;
+    // let page_table_start = &__page_table_start as *const _ as u64;
+    // let page_table_end = &__page_table_end as *const _ as u64;
+    // let bootloader_start = &__bootloader_start as *const _ as u64;
+    // let bootloader_end = &__bootloader_end as *const _ as u64;
+    // let p4_physical = &_p4 as *const _ as u64;
 
     let mut memory_map: MemoryMap =
         create_from(VirtAddr::new(memory_map_addr), memory_map_entry_count);

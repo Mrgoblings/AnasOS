@@ -8,13 +8,22 @@ SECTIONS
     /* Boot section: includes the multiboot header */
     .boot :
     {
-        KEEP(*(.multiboot_header))
+        KEEP(*(.multiboot_header));
+        *(.boot)
     }
 
     /* Text section: contains code */
     .text :
     {
         *(.text)
+    }
+
+    .bss ALIGN(4096):
+    {
+        __bss_start = .;
+        *(.bss)
+        *(COMMON)
+        __bss_end = .;
     }
 
     /* Reserve a buffer for kernel loading */
