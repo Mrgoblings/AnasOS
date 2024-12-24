@@ -23,14 +23,10 @@ git clone https://github.com/Mrgoblings/AnasOS.git
 cd AnasOS
 ```
 
-2. **Install dependencies**:
+2. **Install dependencies in `Debian` based distros with the `apt` packet manager**:
 
 ```sh
-sudo apt update
-sudo apt install -y nasm grub-pc-bin grub-common make mtools xorriso
-rustup update nightly
-rustup target add x86_64-unknown-none --toolchain nightly
-rustup component add rust-src --toolchain nightly-x86_64-unknown-linux-gnu
+./install_dependencies.sh
 ```
 
 3. **Build & Run the OS in qemu**:
@@ -48,6 +44,7 @@ For more detailed instructions and documentation, please refer to the [docs/](do
 Here are some tutorials and resources that were used in the creation of AnasOS:
 
 - [ Writing an OS in Rust from Philipp Oppermann's blog](https://os.phil-opp.com/)
+- [rust-osdev bootloader crate](https://github.com/rust-osdev/bootloader/blob/v0.9.25)
 - [Write Your Own 64-bit Operating System Kernel by CodePulse](https://www.youtube.com/playlist?list=PLZQftyCk7_SeZRitx5MjBKzTtvk0pHMtp)
 - [Making an OS (x86) by Daedalus Community](https://www.youtube.com/playlist?list=PLm3B56ql_akNcvH8vvJRYOc7TbYhRs19M)
 - [Operating Systems by OliveStem](https://www.youtube.com/playlist?list=PL2EF13wm-hWAglI8rRbdsCPq_wRpYvQQy)

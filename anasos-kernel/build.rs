@@ -1,45 +1,56 @@
+/*
+    This file is inspired by:
+    https://github.com/rust-osdev/bootloader/blob/v0.9.25/build.rs
+*/
+
 use std::env;
+use std::fs::File;
+use std::io::Write;
 use std::process::Command;
 
+fn assemble_file(input: &str, output: &str) {
+    let status = Command::new("nasm")
+        .args(&["-f", "elf64", input, "-o", output])
+        .status()
+        .expect(&format!("Failed to assemble {}", input));
+
+    if !status.success() {
+        panic!("Assembly of {} failed with status: {}", input, status);
+    }
+}
+
+fn generate_bootloader_config(out_dir: &str) {
+    let config_file_path = format!("{}/bootloader_config.rs", out_dir);
+    let mut file = File::create(&config_file_path).expect("Failed to create bootloader_config.rs");
+
+    // Hardcoded configuration values.
+    let config_content = r#"
+const PHYSICAL_MEMORY_OFFSET: Option<u64> = Some(0x100000);
+const KERNEL_STACK_ADDRESS: Option<u64> = Some(0x200000);
+const KERNEL_STACK_SIZE: u64 = 512; // size in pages
+const BOOT_INFO_ADDRESS: Option<u64> = Some(0x300000);
+"#;
+
+    file.write_all(config_content.as_bytes())
+        .expect("Failed to write to bootloader_config.rs");
+}
+
 fn main() {
-    let target_dir: String = env::var("OUT_DIR").unwrap(); 
+    let target_dir = env::var("OUT_DIR").unwrap();
 
-    let boot_o_path: String = format!("{}/boot.o", target_dir);
-    let boot_64_o_path: String = format!("{}/boot-64.o", target_dir);
-    let header_o_path = format!("{}/header.o", target_dir);
+    // Assemble ASM files
+    let asm_files = ["boot.asm", "boot-64.asm", "header.asm", "e820.asm"];
+    for file in &asm_files {
+        let input_path = format!("bootloader/{}", file);
+        let output_path = format!("{}/{}.o", target_dir, file);
 
-
-    let status_boot = Command::new("nasm")
-        .args(&["-f", "elf64", "bootloader/boot.asm", "-o", &boot_o_path])
-        .status()
-        .expect("Failed to assemble boot.asm");
-
-    if !status_boot.success() {
-        panic!("Assembly of boot.asm failed with status: {}", status_boot);
+        assemble_file(&input_path, &output_path);
+        println!("cargo:rustc-link-arg={}", output_path);
     }
 
-    let status_boot_64 = Command::new("nasm")
-        .args(&["-f", "elf64", "bootloader/boot-64.asm", "-o", &boot_64_o_path])
-        .status()
-        .expect("Failed to assemble boot-64.asm");
-
-    if !status_boot_64.success() {
-        panic!("Assembly of boot.asm failed with status: {}", status_boot_64);
-    }
-
-    let status_header = Command::new("nasm")
-        .args(&["-f", "elf64", "bootloader/header.asm", "-o", &header_o_path])
-        .status()
-        .expect("Failed to assemble header.asm");
-
-    if !status_header.success() {
-        panic!("Assembly of header.asm failed with status: {}", status_header);
-    }
-
+    // Generate bootloader configuration file
+    generate_bootloader_config(&target_dir);
 
     // Custom linker arguments
     println!("cargo:rustc-link-arg=-Tlinker.ld");
-    println!("cargo:rustc-link-arg={}", boot_o_path);
-    println!("cargo:rustc-link-arg={}", boot_64_o_path);
-    println!("cargo:rustc-link-arg={}", header_o_path);
 }

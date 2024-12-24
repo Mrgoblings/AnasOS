@@ -1,13 +1,27 @@
 GLOBAL start
+
+GLOBAL heap_bottom
+GLOBAL heap_top
+
+GLOBAL PML4
+GLOBAL PDPT
+GLOBAL PD
+GLOBAL PT
+GLOBAL stack_bottom
+GLOBAL stack_top
+
 EXTERN long_mode_start
+EXTERN save_boot_info
 
 SECTION .text
 BITS 32
 
 start:
+    ; CALL save_boot_info
+
     MOV esp, stack_top
     CALL check_multiboot
-    call check_cpuid
+    CALL check_cpuid
     CALL check_long_mode
 
     CALL setup_page_tables
@@ -61,49 +75,74 @@ check_long_mode:
     JMP error
 
 setup_page_tables:
-    ; identity maping (a phisical addres is linked to the same virtual addres)
-    
-    MOV eax, page_table_l3
-    OR eax, 0b11 ; present, writable
-    MOV [page_table_l4], eax
+    ; Identity mapping: map each virtual address to the same physical address
 
-    MOV eax, page_table_l2
-    OR eax, 0b11 ; present, writable
-    MOV [page_table_l3], eax
+    ; Initialize the level 4 page table (PML4)
+    MOV eax, PDPT
+    OR eax, 0b11 ; Present, Writable
+    MOV [PML4], eax
 
-    MOV ecx, 0 ; counter
-.loop_setup_page_tables:
+    ; Initialize the level 3 page table (PDPT)
+    MOV eax, PD
+    OR eax, 0b11 ; Present, Writable
+    MOV [PDPT], eax
 
-    MOV eax, 0x200000  ; 2MiB
-    MUL ecx
-    OR eax, 0b10000011 ; huge-page, present, writable
-    MOV [page_table_l2 + ecx * 8], eax
+    ; Initialize the level 2 page table (PD) with two PDEs
+    MOV eax, PT
+    OR eax, 0b11 ; Present, Writable
+    MOV [PD], eax
+
+    ; Set second PDE for additional memory mapping
+    MOV eax, PT + 0x1000 ; Second page table
+    OR eax, 0b11         ; Present, Writable
+    MOV [PD + 8], eax    ; Write second PDE
+
+    ; Fill both level 1 page tables (PT) with 4 KiB page mappings
+    MOV ecx, 0 ; Entry counter
+.loop_setup_first_pt:
+    MOV eax, ecx            ; Virtual address index
+    SHL eax, 12             ; Calculate physical address (4 KB per entry)
+    OR eax, 0b11            ; Present, Writable
+    MOV [PT + ecx * 8], eax ; Write entry to first PT
 
     INC ecx
-    CMP ecx, 512 ; checks if the whole table is mapped
-    JNE .loop_setup_page_tables
+    CMP ecx, 512            ; Fill all 512 entries (2 MiB)
+    JL .loop_setup_first_pt
+
+    ; Fill second PT for the next 2 MiB
+    MOV ecx, 0
+.loop_setup_second_pt:
+    MOV eax, ecx
+    ADD eax, 0x200000       ; Start from 2 MiB (next PDE covers 2 MiB to 4 MiB)
+    SHL eax, 12
+    OR eax, 0b11
+    MOV [PT + 0x1000 + ecx * 8], eax ; Write entry to second PT
+
+    INC ecx
+    CMP ecx, 512            ; Fill all 512 entries (2 MiB)
+    JL .loop_setup_second_pt
 
     RET
 
 enable_paging:
-    ; pass the page table location to the cpu
-    MOV eax, page_table_l4
+    ; Pass the page table location to the CPU
+    MOV eax, PML4           ; Load physical address of PML4
     MOV cr3, eax
 
-    ; enable Phisical Address Extension (PAE)
+    ; Enable Physical Address Extension (PAE)
     MOV eax, cr4
-    OR eax, 1 << 5
+    OR eax, 1 << 5          ; Set PAE bit
     MOV cr4, eax
 
-    ; enable long mode
-    MOV ecx, 0xC0000080
-    RDMSR ; Read Model Specific Register instruction
-    OR eax, 1 << 8
-    WRMSR ; Write Model Specific Register instruction
+    ; Enable Long Mode
+    MOV ecx, 0xC0000080     ; MSR for EFER
+    RDMSR
+    OR eax, 1 << 8          ; Set LME (Long Mode Enable)
+    WRMSR
 
-    ; enable paging
+    ; Enable Paging
     MOV eax, cr0
-    OR eax, 1 << 31
+    OR eax, 1 << 31         ; Set PG bit
     MOV cr0, eax
 
     RET
@@ -118,21 +157,28 @@ error:
 
 SECTION .bss
 ALIGN 4096
-page_table_l4:
-    RESB 4096
-page_table_l3:
-    RESB 4096
-page_table_l2:
-    RESB 4096
+start_page_table:
+PML4:
+    RESB 4096                ; Level 4 Page Table 512 entries by 8 bytes each
+PDPT:
+    RESB 4096                ; Level 3 Page Table
+PD:
+    RESB 4096                ; Level 2 Page Table
+PT:
+    RESB 4096 * 2            ; Two Level 1 Page Tables (512 entries each)
+end_page_table:
 stack_bottom:
-    RESB 4096 * 5 ; bytes reserved for stack (5 pages)
+    RESB 4096 * 512 ; bytes reserved for stack (512 pages)
 stack_top:
+heap_bottom:
+    RESB 100 * 1024 ; 100 KiB reserved for heap
+heap_top:
 
 SECTION .rodata
 gdt64:
     dq 0 ; zero entry
 .code_segment: EQU $ - gdt64
-    dq (1 << 43) | (1 << 44) | (1 << 47) | (1 << 53) ; code segment 
+    dq (1 << 43) | (1 << 44) | (1 << 47) | (1 << 53) ; 64-bit code segment
 .pointer:
     dw $ - gdt64 - 1
     dq gdt64
