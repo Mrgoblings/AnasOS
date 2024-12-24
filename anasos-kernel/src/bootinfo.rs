@@ -7,8 +7,8 @@ use traits::BootInfo;
 use usize_conversions::usize_from;
 
 use x86_64::structures::paging::{
-    frame::PhysFrameRange, page_table::PageTableEntry, Mapper, Page, PageTable, PageTableFlags,
-    PageTableIndex, PhysFrame, RecursivePageTable, Size2MiB, Size4KiB,
+    frame::PhysFrameRange, Page, PageTableFlags,
+    PageTableIndex, PhysFrame, RecursivePageTable, Size2MiB
 };
 use x86_64::{PhysAddr, VirtAddr};
 
@@ -48,6 +48,7 @@ pub fn create_from(memory_map_addr: VirtAddr, entry_count: u64) -> MemoryMap {
 
 pub struct IdentityMappedAddr(PhysAddr);
 
+#[warn(dead_code)]
 impl IdentityMappedAddr {
     fn phys(&self) -> PhysAddr {
         self.0

@@ -4,7 +4,7 @@
 
 #![deny(improper_ctypes)]
 
-use crate::{print, println};
+use crate::println;
 
 use super::memory_map::MemoryMap;
 

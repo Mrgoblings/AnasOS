@@ -2,34 +2,13 @@ ENTRY(start)
 
 SECTIONS
 {
-    /* Start address as per GRUB multiboot standard */
-    . = 1M;
-
-    /* Boot section: includes the multiboot header */
+    /* Reserve a buffer for kernel loading */
+    . = 0x0;
     .boot :
     {
         KEEP(*(.multiboot_header));
         *(.boot)
     }
-
-    /* Text section: contains code */
-    .text :
-    {
-        *(.text)
-    }
-
-    .bss ALIGN(4096):
-    {
-        __bss_start = .;
-        *(.bss)
-        *(COMMON)
-        __bss_end = .;
-    }
-
-    /* Reserve a buffer for kernel loading */
-    . = 0x500;
-    _kernel_buffer = .;
-    . += 512;
 
     /* Page table addresses already defined in boot.asm, but ensure alignment */
     . = ALIGN(4096); /* Page size */
@@ -53,5 +32,19 @@ SECTIONS
     .kernel :
     {
         KEEP(*(.kernel))
+    }
+    
+    /* Text section: contains code */
+    .text :
+    {
+        *(.text)
+    }
+
+    .bss ALIGN(4096):
+    {
+        __bss_start = .;
+        *(.bss)
+        *(COMMON)
+        __bss_end = .;
     }
 }

@@ -8,7 +8,7 @@ use lazy_static::lazy_static;
 use core::panic::PanicInfo;
 
 use anasos_kernel::{ 
-    allocator, bootinfo::{self, traits::{BootInfo, TlsTemplate}}, hlt, init, memory::{ self, BootInfoFrameAllocator}, println
+    allocator, bootinfo::{self, traits::BootInfo}, hlt, init, memory::{ self, BootInfoFrameAllocator}, println
 };
 use x86_64::VirtAddr;
 
@@ -23,11 +23,11 @@ pub extern "C" fn _start() -> ! {
 
     println!("boot_info: {:?}", *BOOT_INFO);
 
-    #[cfg(notest)]
+    // #[cfg(notest)]
     kernel_main(&*BOOT_INFO);
 
-    #[cfg(test)]
-    test_kernel_main(&*BOOT_INFO);
+    // #[cfg(test)]
+    // test_kernel_main(&*BOOT_INFO);
 
     hlt();
 }
