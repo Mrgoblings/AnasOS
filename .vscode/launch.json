@@ -1,0 +1,14 @@
+// FROM https://github.com/chuckb/riscv-helloworld-c/blob/NbZDowmXzZs/.vscode/launch.json
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug AnasOS",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceFolder}/AnasOS/boot/kernel",
+            "cwd": "${workspaceFolder}",
+            "preLaunchTask": "Run QEMU"
+        }
+    ]
+}

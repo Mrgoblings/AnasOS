@@ -1,0 +1,42 @@
+// FROM https://github.com/chuckb/riscv-helloworld-c/blob/NbZDowmXzZs/.vscode/tasks.json
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Build",
+            "type": "shell",
+            "command": "make",
+            "args": ["bootloader-no-run"],
+            // "args": ["kernel-no-run"],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+						},
+            "problemMatcher": ["$gcc"]
+				},
+        {
+          "label": "Run QEMU",
+          "type": "shell",
+          "command": "echo 'QEMU started'; qemu-system-x86_64 ${workspaceFolder}/AnasOS.iso -s -S",
+          "dependsOn": ["Build"],
+          "isBackground": true,
+          "problemMatcher": [
+            {
+              "pattern": [
+                {
+                  "regexp": ".",
+                  "file": 1,
+                  "location": 2,
+                  "message": 3
+								}
+							],
+              "background": {
+                "activeOnStart": true,
+                "beginsPattern": ".",
+                "endsPattern": "QEMU started",
+							}
+						}
+					]
+				}
+		]
+}

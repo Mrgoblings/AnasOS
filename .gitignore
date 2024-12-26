@@ -1,6 +1,6 @@
 target/
 AnasOS/boot/kernel
-.vscode/
+.vscode/settings.json
 
 *.bin
 *.out
