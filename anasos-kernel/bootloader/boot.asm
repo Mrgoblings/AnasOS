@@ -10,15 +10,13 @@ GLOBAL PT
 GLOBAL stack_bottom
 GLOBAL stack_top
 
-EXTERN long_mode_start
+EXTERN start_long_mode
 EXTERN save_boot_info
 
 SECTION .text
 BITS 32
 
-start:
-    ; CALL save_boot_info
-
+start_protected_mode:
     MOV esp, stack_top
     CALL check_multiboot
     CALL check_cpuid
@@ -26,9 +24,10 @@ start:
 
     CALL setup_page_tables
     CALL enable_paging
+    call write_W_to_vga
 
     LGDT [gdt64.pointer]
-    JMP gdt64.code_segment:long_mode_start
+    JMP gdt64.code_segment:start_long_mode
 
     HLT
 
@@ -109,6 +108,11 @@ setup_page_tables:
     CMP ecx, 512            ; Fill all 512 entries (2 MiB)
     JL .loop_setup_first_pt
 
+    ; Ensure VGA buffer (0xB8000) is identity-mapped
+    MOV eax, 0xB8000        ; Physical address of VGA buffer
+    OR eax, 0b11            ; Present, Writable
+    MOV [PT + (0xB8 * 8)], eax ; Map 0xB8000 in the first PT
+
     ; Fill second PT for the next 2 MiB
     MOV ecx, 0
 .loop_setup_second_pt:
@@ -154,6 +158,14 @@ error:
     MOV dword [0xB8008], 0x4F204F20
     MOV byte  [0xB800C], al
     HLT
+
+write_W_to_vga:
+    ; Write the letter "W" to the VGA text buffer
+    mov edi, 0xB8000      ; VGA text buffer address
+    mov ax, 0x0F57        ; "W" (ASCII 0x57) with attribute 0x0F (white on black)
+    mov word [edi], ax    ; Write the word (character + attribute) to VGA memory
+    HLT
+    ret                   ; Return to the caller
 
 SECTION .bss
 ALIGN 4096
