@@ -12,7 +12,7 @@
                 "kind": "build",
                 "isDefault": true
 						},
-            "problemMatcher": ["$gcc"]
+            "problemMatcher": ["$nasm", "$ld", "$cargo"],
 				},
         {
           "label": "Run QEMU",
