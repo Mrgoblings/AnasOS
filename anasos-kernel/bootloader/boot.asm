@@ -1,4 +1,4 @@
-GLOBAL start
+GLOBAL start_protected_mode
 
 GLOBAL heap_bottom
 GLOBAL heap_top
