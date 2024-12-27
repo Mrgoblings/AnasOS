@@ -24,7 +24,7 @@ start_protected_mode:
 
     CALL setup_page_tables
     CALL enable_paging
-    call write_W_to_vga
+    ; call write_W_to_vga
 
     LGDT [gdt64.pointer]
     JMP gdt64.code_segment:start_long_mode
@@ -86,17 +86,20 @@ setup_page_tables:
     OR eax, 0b11 ; Present, Writable
     MOV [PDPT], eax
 
-    ; Initialize the level 2 page table (PD) with two PDEs
-    MOV eax, PT
-    OR eax, 0b11 ; Present, Writable
+    ; Initialize the level 2 page table (PD) with three PDEs
+    MOV eax, PT                ; First page table
+    OR eax, 0b11               ; Present, Writable
     MOV [PD], eax
 
-    ; Set second PDE for additional memory mapping
-    MOV eax, PT + 0x1000 ; Second page table
-    OR eax, 0b11         ; Present, Writable
-    MOV [PD + 8], eax    ; Write second PDE
+    MOV eax, PT + 0x1000       ; Second page table
+    OR eax, 0b11               ; Present, Writable
+    MOV [PD + 8], eax          ; Write second PDE
 
-    ; Fill both level 1 page tables (PT) with 4 KiB page mappings
+    MOV eax, PT + 0x2000       ; Third page table
+    OR eax, 0b11               ; Present, Writable
+    MOV [PD + 16], eax         ; Write third PDE
+
+    ; Fill the first PT for identity mapping (0 MiB to 2 MiB)
     MOV ecx, 0 ; Entry counter
 .loop_setup_first_pt:
     MOV eax, ecx            ; Virtual address index
@@ -108,16 +111,11 @@ setup_page_tables:
     CMP ecx, 512            ; Fill all 512 entries (2 MiB)
     JL .loop_setup_first_pt
 
-    ; Ensure VGA buffer (0xB8000) is identity-mapped
-    MOV eax, 0xB8000        ; Physical address of VGA buffer
-    OR eax, 0b11            ; Present, Writable
-    MOV [PT + (0xB8 * 8)], eax ; Map 0xB8000 in the first PT
-
-    ; Fill second PT for the next 2 MiB
+    ; Fill the second PT for the next 2 MiB (2 MiB to 4 MiB)
     MOV ecx, 0
 .loop_setup_second_pt:
     MOV eax, ecx
-    ADD eax, 0x200000       ; Start from 2 MiB (next PDE covers 2 MiB to 4 MiB)
+    ADD eax, 0x200000       ; Start from 2 MiB
     SHL eax, 12
     OR eax, 0b11
     MOV [PT + 0x1000 + ecx * 8], eax ; Write entry to second PT
@@ -125,6 +123,19 @@ setup_page_tables:
     INC ecx
     CMP ecx, 512            ; Fill all 512 entries (2 MiB)
     JL .loop_setup_second_pt
+
+    ; Fill the third PT for the next 2 MiB (4 MiB to 6 MiB)
+    MOV ecx, 0
+.loop_setup_third_pt:
+    MOV eax, ecx
+    ADD eax, 0x400000       ; Start from 4 MiB
+    SHL eax, 12
+    OR eax, 0b11
+    MOV [PT + 0x2000 + ecx * 8], eax ; Write entry to third PT
+
+    INC ecx
+    CMP ecx, 512            ; Fill all 512 entries (2 MiB)
+    JL .loop_setup_third_pt
 
     RET
 
@@ -144,10 +155,15 @@ enable_paging:
     OR eax, 1 << 8          ; Set LME (Long Mode Enable)
     WRMSR
 
+    call write_W_to_vga
+    
+    RET
+
     ; Enable Paging
     MOV eax, cr0
     OR eax, 1 << 31         ; Set PG bit
     MOV cr0, eax
+
 
     RET
 
@@ -164,7 +180,7 @@ write_W_to_vga:
     mov edi, 0xB8000      ; VGA text buffer address
     mov ax, 0x0F57        ; "W" (ASCII 0x57) with attribute 0x0F (white on black)
     mov word [edi], ax    ; Write the word (character + attribute) to VGA memory
-    HLT
+    ; HLT
     ret                   ; Return to the caller
 
 SECTION .bss
@@ -177,7 +193,7 @@ PDPT:
 PD:
     RESB 4096                ; Level 2 Page Table
 PT:
-    RESB 4096 * 2            ; Two Level 1 Page Tables (512 entries each)
+    RESB 4096 * 3            ; Three Level 1 Page Tables (512 entries each)
 end_page_table:
 stack_bottom:
     RESB 4096 * 512 ; bytes reserved for stack (512 pages)
