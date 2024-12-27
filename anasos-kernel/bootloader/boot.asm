@@ -167,7 +167,8 @@ fill_page_table:
 
 .loop_fill_pt:
     MOV edx, ecx          ; Current page index
-    ADD edx, al           ; Add the starting offset from AL
+    MOVZX ebx, al         ; Zero-extend AL into EBX (upper 24 bits cleared)
+    ADD edx, ebx           ; Add the starting offset from AL
     SHL edx, 12           ; Convert to physical address (4 KiB pages)
     OR edx, 0b11          ; Mark Present and Writable
     MOV [eax + ecx * 8], edx ; Write the entry to the page table
