@@ -10,7 +10,7 @@ bootloader: clean bootloader-asm image run
 
 bootloader-no-run: clean bootloader-asm image
 
-test: no-run
+test: kernel-no-run
 	echo "Compiled the OS successfully"
 
 kernel-rust:
