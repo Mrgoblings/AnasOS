@@ -99,43 +99,20 @@ setup_page_tables:
     OR eax, 0b11               ; Present, Writable
     MOV [PD + 16], eax         ; Write third PDE
 
-    ; Fill the first PT for identity mapping (0 MiB to 2 MiB)
-    MOV ecx, 0 ; Entry counter
-.loop_setup_first_pt:
-    MOV eax, ecx            ; Virtual address index
-    SHL eax, 12             ; Calculate physical address (4 KB per entry)
-    OR eax, 0b11            ; Present, Writable
-    MOV [PT + ecx * 8], eax ; Write entry to first PT
+    ; Fill the first PT (0 MiB to 2 MiB)
+    MOV eax, PT                ; Base of first page table
+    XOR al, al                 ; Offset: 0 MiB
+    CALL fill_page_table
 
-    INC ecx
-    CMP ecx, 512            ; Fill all 512 entries (2 MiB)
-    JL .loop_setup_first_pt
+    ; Fill the second PT (2 MiB to 4 MiB)
+    MOV eax, PT + 0x1000       ; Base of second page table
+    MOV al, 2                  ; Offset: 2 MiB (2 * 1 MiB chunks)
+    CALL fill_page_table
 
-    ; Fill the second PT for the next 2 MiB (2 MiB to 4 MiB)
-    MOV ecx, 0
-.loop_setup_second_pt:
-    MOV eax, ecx
-    ADD eax, 0x200000       ; Start from 2 MiB
-    SHL eax, 12
-    OR eax, 0b11
-    MOV [PT + 0x1000 + ecx * 8], eax ; Write entry to second PT
-
-    INC ecx
-    CMP ecx, 512            ; Fill all 512 entries (2 MiB)
-    JL .loop_setup_second_pt
-
-    ; Fill the third PT for the next 2 MiB (4 MiB to 6 MiB)
-    MOV ecx, 0
-.loop_setup_third_pt:
-    MOV eax, ecx
-    ADD eax, 0x400000       ; Start from 4 MiB
-    SHL eax, 12
-    OR eax, 0b11
-    MOV [PT + 0x2000 + ecx * 8], eax ; Write entry to third PT
-
-    INC ecx
-    CMP ecx, 512            ; Fill all 512 entries (2 MiB)
-    JL .loop_setup_third_pt
+    ; Fill the third PT (4 MiB to 6 MiB)
+    MOV eax, PT + 0x2000       ; Base of third page table
+    MOV al, 4                  ; Offset: 4 MiB (4 * 1 MiB chunks)
+    CALL fill_page_table
 
     RET
 
@@ -167,13 +144,41 @@ enable_paging:
 
     RET
 
+; Function to handle errors
+; Input:
+; - AL: Error code
+; Output:
+; - Prints an error message to the screen
+; "ERR: X", where X is the error code from AL
 error:
-    ; print "ERR: X", where X is the error code
     MOV dword [0xB8000], 0x4F524F45
     MOV dword [0xB8004], 0x4F3A4F52
     MOV dword [0xB8008], 0x4F204F20
     MOV byte  [0xB800C], al
     HLT
+
+; Function to fill a page table
+; Input:
+; - EAX: Base address of the page table
+; - AL: Starting offset in 2 MiB chunks (physical address / 2 MiB)
+fill_page_table:
+    PUSH ecx              ; Save ECX (used as the loop counter)
+    MOV ecx, 0            ; Reset loop counter
+
+.loop_fill_pt:
+    MOV edx, ecx          ; Current page index
+    ADD edx, al           ; Add the starting offset from AL
+    SHL edx, 12           ; Convert to physical address (4 KiB pages)
+    OR edx, 0b11          ; Mark Present and Writable
+    MOV [eax + ecx * 8], edx ; Write the entry to the page table
+
+    INC ecx
+    CMP ecx, 512          ; Fill all 512 entries (2 MiB range)
+    JL .loop_fill_pt
+
+    POP ecx               ; Restore ECX
+    RET
+
 
 write_W_to_vga:
     ; Write the letter "W" to the VGA text buffer
