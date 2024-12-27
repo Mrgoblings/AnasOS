@@ -134,15 +134,13 @@ enable_paging:
 
     call write_W_to_vga
     
-    RET
-
     ; Enable Paging
     MOV eax, cr0
     OR eax, 1 << 31         ; Set PG bit
     MOV cr0, eax
 
 
-    RET
+    RET ; TODO paging stops working here. This RET goes to "0" address. If putted above the MOV cr0, eax, it goes to the right address. Enabling the paging braeks the RET system by forgetting the prev stack of return addresses.  
 
 ; Function to handle errors
 ; Input:
