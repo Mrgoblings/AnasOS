@@ -18,6 +18,8 @@ BITS 32
 
 start_protected_mode:
     MOV esp, stack_top
+    ; CALL print_ascii_art
+
     CALL check_multiboot
     CALL check_cpuid
     CALL check_long_mode
@@ -178,6 +180,33 @@ fill_page_table:
     POP ecx               ; Restore ECX
     RET
 
+; Function to print ASCII logo to the screen
+print_ascii_art:
+    PUSH esi                ; Save ESI (source index register)
+    MOV esi, ascii_art      ; Load the address of the ASCII art into ESI
+    MOV edi, 0xB8000        ; VGA text buffer address
+    MOV ah, 0x0F            ; White text on black background
+
+.print_loop:
+    LODSB                   ; Load the next byte from [ESI] into AL
+    CMP al, 0               ; Check for null terminator
+    JE .done                ; If null terminator, end loop
+
+    CMP al, 10              ; Check for line feed (newline)
+    JNE .print_char         ; If not a newline, print the character
+    ADD edi, 160            ; Move to the next line (80 columns * 2 bytes per char)
+    JMP .print_loop         ; Continue to the next character
+
+.print_char:
+    MOV [edi], al           ; Write the character to VGA memory
+    MOV [edi + 1], ah       ; Write the attribute byte
+    ADD edi, 2              ; Move to the next character position
+    JMP .print_loop         ; Continue to the next character
+
+.done:
+    POP esi                 ; Restore ESI
+    RET                     ; Return to the caller
+
 
 write_W_to_vga:
     ; Write the letter "W" to the VGA text buffer
@@ -186,6 +215,18 @@ write_W_to_vga:
     mov word [edi], ax    ; Write the word (character + attribute) to VGA memory
     ; HLT
     ret                   ; Return to the caller
+
+SECTION .data
+ALIGN 4096
+ascii_art:
+    db "     __    _   _    __    ____    ____     _____", 0x0F, 10, 0
+    db "    /  \\  | \\ | |  /  \\  / ___7  / __ \\   / ____>", 0x0F, 10, 0
+    db "   / /\\ \\ |  \\| | / /\\ \\ \\___ \\ | |  | | | (_____", 0x0F, 10, 0
+    db "  / ____ \\| |\\  |/ ____ \\___) | | |  | |  \\____  \\", 0x0F, 10, 0
+    db " / /    \\ \\_| \\_|_/    \\_\\____/ | |  | |  _____) |", 0x0F, 10, 0
+    db "/_|      \\_\\                     \\____/  |______/", 0x0F, 10, 0
+    db 0  ; Null terminator for end of data
+
 
 SECTION .bss
 ALIGN 4096
