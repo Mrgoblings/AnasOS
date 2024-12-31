@@ -12,6 +12,7 @@ GLOBAL stack_top
 
 EXTERN start_long_mode
 EXTERN save_boot_info
+EXTERN do_e820
 
 SECTION .text
 BITS 32
@@ -23,6 +24,8 @@ start_protected_mode:
     CALL check_multiboot
     CALL check_cpuid
     CALL check_long_mode
+
+    ; CALL create_memory_map
 
     CALL setup_page_tables
     CALL enable_paging
@@ -178,6 +181,11 @@ fill_page_table:
 
     POP ecx               ; Restore ECX
     RET
+
+
+create_memory_map:
+    lea di, es:[_memory_map]
+    CALL do_e820
 
 ; Function to print ASCII logo to the screen
 print_ascii_art:

@@ -30,14 +30,14 @@ SECTIONS
     /* Kernel metadata section */
     .kernel :
     {
-        KEEP(*(.kernel))
-    }
-    
-    /* Text section: contains code */
-    .text :
-    {
+        _kernel_start_addr = .;
         *(.text)
+        *(.data)
+        _kernel_end_addr = .;
     }
+
+    _kernel_size = _kernel_end_addr - _kernel_start_addr;
+    
 
     .bss ALIGN(4096):
     {

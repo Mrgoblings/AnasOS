@@ -14,6 +14,8 @@ use x86_64::{PhysAddr, VirtAddr};
 
 use xmas_elf::program::ProgramHeader64;
 
+use crate::println;
+
 pub mod frame_allocator;
 pub mod level4_entries;
 pub mod memory_map;
@@ -78,14 +80,22 @@ unsafe extern "C" {
     unsafe static _kernel_start_addr: usize;
     unsafe static _kernel_end_addr: usize;
     unsafe static _kernel_size: usize;
-    unsafe static __page_table_start: usize;
-    unsafe static __page_table_end: usize;
-    unsafe static __bootloader_end: usize;
-    unsafe static __bootloader_start: usize;
-    unsafe static _p4: usize;
+    // unsafe static __page_table_start: usize;
+    // unsafe static __page_table_end: usize;
+    // unsafe static __bootloader_end: usize;
+    // unsafe static __bootloader_start: usize;
+    // unsafe static _p4: usize;
 }
 
 pub unsafe fn get() -> BootInfo {
+    // Check unsafe variables
+    println!("\nmmap_ent: {:#x}", mmap_ent);
+    println!("memory_map: {:#x}", _memory_map);
+    println!("kernel_start_addr: {:#x}", _kernel_start_addr);
+    println!("kernel_end_addr: {:#x}", _kernel_end_addr);
+    println!("kernel_size: {:#x}", _kernel_size);
+
+
     let mut preallocated_space = alloc_stack!([ProgramHeader64; 32]);
     let segments = FixedVec::new(&mut preallocated_space);
 
@@ -102,8 +112,14 @@ pub unsafe fn get() -> BootInfo {
     // let bootloader_end = &__bootloader_end as *const _ as u64;
     // let p4_physical = &_p4 as *const _ as u64;
 
+    println!("Kernel start: {:#x}", kernel_start.as_u64());
+    println!("Memory map address: {:#x}", memory_map_addr);
+    println!("Memory map entry count: {:#x}", memory_map_entry_count);
+
     let mut memory_map: MemoryMap =
         create_from(VirtAddr::new(memory_map_addr), memory_map_entry_count);
+
+    println!("Memory map: {:#?}", memory_map);
 
     let max_phys_addr: u64 = memory_map
         .iter()

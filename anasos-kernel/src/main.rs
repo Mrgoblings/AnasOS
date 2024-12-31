@@ -12,21 +12,19 @@ use anasos_kernel::{
 };
 use x86_64::VirtAddr;
 
-// TODO: Symbols defined in `linker.ld`
-
 
 #[no_mangle]
 pub extern "C" fn _start() -> ! {
-    println!("Hello World{}", "!");
+    // println!("Hello World{}", "!");
 
-    // lazy_static! {
-    //     static ref BOOT_INFO: BootInfo = unsafe { bootinfo::get() };
-    // }
+    lazy_static! {
+        static ref BOOT_INFO: BootInfo = unsafe { bootinfo::get() };
+    }
 
-    // println!("boot_info: {:?}", *BOOT_INFO);
+    println!("boot_info: {:?}", *BOOT_INFO);
 
-    // // #[cfg(notest)]
-    // kernel_main(&*BOOT_INFO);
+    // #[cfg(notest)]
+    kernel_main(&*BOOT_INFO);
 
     // #[cfg(test)]
     // test_kernel_main(&*BOOT_INFO);
