@@ -35,6 +35,7 @@ start_protected_mode:
 
     HLT
 
+
 check_multiboot:
     CMP eax, 0x36d76289
     JNE .no_multiboot
