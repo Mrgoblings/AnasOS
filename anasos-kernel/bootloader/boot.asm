@@ -12,12 +12,15 @@ GLOBAL stack_top
 
 EXTERN start_long_mode
 EXTERN save_boot_info
-EXTERN do_e820
+; EXTERN do_e820
+; EXTERN _memory_map
 
 SECTION .text
 BITS 32
 
 start_protected_mode:
+    PUSHA
+
     MOV esp, stack_top
     ; CALL print_ascii_art
 
@@ -29,6 +32,8 @@ start_protected_mode:
 
     CALL setup_page_tables
     CALL enable_paging
+
+    POPA
     
     LGDT [gdt64.pointer]
     JMP gdt64.code_segment:start_long_mode
@@ -184,9 +189,9 @@ fill_page_table:
     RET
 
 
-create_memory_map:
-    lea di, es:[_memory_map]
-    CALL do_e820
+; create_memory_map:
+;     lea di, es:[_memory_map]
+;    CALL do_e820
 
 ; Function to print ASCII logo to the screen
 print_ascii_art:

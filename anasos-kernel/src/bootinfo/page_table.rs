@@ -2,7 +2,7 @@
 
 use crate::bootinfo::frame_allocator::FrameAllocator;
 use crate::bootinfo::MemoryRegionType;
-use crate::bootinfo::traits::{TlsTemplate,};
+use crate::bootinfo::traits::TlsTemplate;
 use fixedvec::FixedVec;
 use x86_64::structures::paging::mapper::{MapToError, MapperFlush, UnmapError};
 use x86_64::structures::paging::{

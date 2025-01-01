@@ -19,27 +19,27 @@ fn assemble_file(input: &str, output: &str) {
     }
 }
 
-fn generate_bootloader_config(out_dir: &str) {
-    let config_file_path = format!("{}/bootloader_config.rs", out_dir);
-    let mut file = File::create(&config_file_path).expect("Failed to create bootloader_config.rs");
+// fn generate_bootloader_config(out_dir: &str) {
+//     let config_file_path = format!("{}/bootloader_config.rs", out_dir);
+//     let mut file = File::create(&config_file_path).expect("Failed to create bootloader_config.rs");
 
-    // Hardcoded configuration values.
-    let config_content = r#"
-const PHYSICAL_MEMORY_OFFSET: Option<u64> = Some(0x100000);
-const KERNEL_STACK_ADDRESS: Option<u64> = Some(0x200000);
-const KERNEL_STACK_SIZE: u64 = 512; // size in pages
-const BOOT_INFO_ADDRESS: Option<u64> = Some(0x300000);
-"#;
+//     // Hardcoded configuration values.
+//     let config_content = r#"
+// const PHYSICAL_MEMORY_OFFSET: Option<u64> = Some(0x100000);
+// const KERNEL_STACK_ADDRESS: Option<u64> = Some(0x200000);
+// const KERNEL_STACK_SIZE: u64 = 512; // size in pages
+// const BOOT_INFO_ADDRESS: Option<u64> = Some(0x300000);
+// "#;
 
-    file.write_all(config_content.as_bytes())
-        .expect("Failed to write to bootloader_config.rs");
-}
+//     file.write_all(config_content.as_bytes())
+//         .expect("Failed to write to bootloader_config.rs");
+// }
 
 fn main() {
     let target_dir = env::var("OUT_DIR").unwrap();
 
     // Assemble ASM files
-    let asm_files = ["boot.asm", "boot-64.asm", "header.asm", "e820.asm"];
+    let asm_files = ["boot.asm", "boot-64.asm", "header.asm"];
     for file in &asm_files {
         let input_path = format!("bootloader/{}", file);
         let output_path = format!("{}/{}.o", target_dir, file);
@@ -49,7 +49,7 @@ fn main() {
     }
 
     // Generate bootloader configuration file
-    generate_bootloader_config(&target_dir);
+    // generate_bootloader_config(&target_dir);
 
     // Custom linker arguments
     println!("cargo:rustc-link-arg=-Tlinker.ld");

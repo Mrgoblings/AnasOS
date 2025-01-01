@@ -6,12 +6,15 @@ BITS 64
 start_long_mode:
     ; load null to all data segmant registers (needed for the cpu to work as intended)
     ; documented here - https://www.gnu.org/software/grub/manual/multiboot2/multiboot.html#Machine-state
-    MOV ax, 0
-    MOV ds, ax
-    MOV es, ax
-    MOV fs, ax
-    MOV gs, ax
-    MOV ss, ax
+    PUSH RAX
+    XOR AX, AX
+    MOV DS, AX
+    MOV ES, AX
+    MOV FS, AX
+    MOV GS, AX
+    MOV SS, AX
+
+    POP RAX
 
     CALL _start
     

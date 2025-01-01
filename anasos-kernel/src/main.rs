@@ -13,18 +13,38 @@ use anasos_kernel::{
 use x86_64::VirtAddr;
 
 
-#[no_mangle]
-pub extern "C" fn _start() -> ! {
-    // println!("Hello World{}", "!");
+extern crate multiboot2;
 
-    lazy_static! {
-        static ref BOOT_INFO: BootInfo = unsafe { bootinfo::get() };
+use multiboot2::{BootInformation, BootInformationHeader};
+
+
+#[no_mangle]
+pub extern "C" fn _start(mb_magic: u32, mbi_ptr: u32) -> ! {
+    // println!("Hello World{}", "!");
+    
+    println!("Multiboot2 magic number: {:#x}", mb_magic);
+    println!("Multiboot2 info address: {:#x}", mbi_ptr);
+
+    let boot_info;
+    if mb_magic == multiboot2::MAGIC {
+        boot_info = unsafe { BootInformation::load(mbi_ptr as *const BootInformationHeader).unwrap() };
+        let _cmd = boot_info.command_line_tag();
+    } else {
+        panic!("Invalid Multiboot2 magic number");
     }
 
-    println!("boot_info: {:?}", *BOOT_INFO);
+    println!("{:?}", boot_info);
+
+    hlt();
+
+    // lazy_static! {
+    //     static ref BOOT_INFO: BootInfo = unsafe { bootinfo::get() };
+    // }
+
+    // println!("boot_info: {:?}", *BOOT_INFO);
 
     // #[cfg(notest)]
-    kernel_main(&*BOOT_INFO);
+    // kernel_main(&*BOOT_INFO);
 
     // #[cfg(test)]
     // test_kernel_main(&*BOOT_INFO);
