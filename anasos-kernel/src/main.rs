@@ -25,13 +25,13 @@ pub extern "C" fn _start(mb_magic: u32, mbi_ptr: u32) -> ! {
     println!("Multiboot2 magic number: {:#x}", mb_magic);
     println!("Multiboot2 info address: {:#x}", mbi_ptr);
 
-    let boot_info;
-    if mb_magic == multiboot2::MAGIC {
-        boot_info = unsafe { BootInformation::load(mbi_ptr as *const BootInformationHeader).unwrap() };
-        let _cmd = boot_info.command_line_tag();
-    } else {
+    if mb_magic != multiboot2::MAGIC {
         panic!("Invalid Multiboot2 magic number");
     }
+
+    let boot_info = unsafe { BootInformation::load(mbi_ptr as *const BootInformationHeader).unwrap() };
+    let _cmd = boot_info.command_line_tag();
+    
 
     println!("{:?}", boot_info);
 
