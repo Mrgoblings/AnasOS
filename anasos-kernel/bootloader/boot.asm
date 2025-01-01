@@ -19,21 +19,23 @@ SECTION .text
 BITS 32
 
 start_protected_mode:
-    PUSHA
-
     MOV esp, stack_top
+    ; Save all general-purpose registers like EAX, EBX, ECX, etc.
+    ; The registers are populated from the multiboot2 header and should be preserved
+    ;   EAX: Multiboot2 magic number
+    ;   EBX: Multiboot2 info pointer
+    PUSHA           
+
     ; CALL print_ascii_art
 
     CALL check_multiboot
     CALL check_cpuid
     CALL check_long_mode
 
-    ; CALL create_memory_map
-
     CALL setup_page_tables
     CALL enable_paging
 
-    POPA
+    POPA        ; Restore all general-purpose registers like EAX, EBX, ECX, etc.
     
     LGDT [gdt64.pointer]
     JMP gdt64.code_segment:start_long_mode

@@ -15,8 +15,12 @@ start_long_mode:
     MOV SS, AX
 
     POP RAX
+   
+   ; Call the Rust entry point
+    MOV RDI, RAX       ; Pass Multiboot2 magic (EAX) to _start (1st argument in SysV ABI)
+    MOV RSI, RBX       ; Pass Multiboot2 info pointer (EBX) to _start (2nd argument in SysV ABI)
+    CALL _start        ; Jump to Rust kernel
 
-    CALL _start
     
     ; ; Write the letter "W" to the VGA text buffer
     ; MOV rdi, 0xB8000       ; VGA text buffer address (identity-mapped in page tables)

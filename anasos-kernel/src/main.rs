@@ -4,7 +4,6 @@
 extern crate alloc;
 
 use alloc::{boxed::Box, rc::Rc, vec, vec::Vec};
-use lazy_static::lazy_static;
 use core::panic::PanicInfo;
 
 use anasos_kernel::{ 
@@ -14,14 +13,11 @@ use x86_64::VirtAddr;
 
 
 extern crate multiboot2;
-
 use multiboot2::{BootInformation, BootInformationHeader};
 
 
 #[no_mangle]
-pub extern "C" fn _start(mb_magic: u32, mbi_ptr: u32) -> ! {
-    // println!("Hello World{}", "!");
-    
+pub extern "C" fn _start(mb_magic: u32, mbi_ptr: u32) -> ! {    
     println!("Multiboot2 magic number: {:#x}", mb_magic);
     println!("Multiboot2 info address: {:#x}", mbi_ptr);
 
@@ -33,17 +29,17 @@ pub extern "C" fn _start(mb_magic: u32, mbi_ptr: u32) -> ! {
     let _cmd = boot_info.command_line_tag();
     
 
-    println!("{:?}", boot_info);
+    // println!("{:?}", boot_info);
 
     // Access the memory map
     if let Some(memory_map_tag) = boot_info.memory_map_tag() {
         for area in memory_map_tag.memory_areas() {
-            println!(
-                "Memory area: start = {:#x}, length = {:#x}, type = {:?}",
-                area.start_address(),
-                area.size(),
-                area.typ()
-            );
+            // println!(
+            //     "Memory area: start = {:#x}, length = {:#x}, type = {:?}",
+            //     area.start_address(),
+            //     area.size(),
+            //     area.typ()
+            // );
         }
     }
 
