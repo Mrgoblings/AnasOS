@@ -8,39 +8,15 @@ header_start:
     ; Header length (updated dynamically)
     DD header_end - header_start
     ; Checksum
-    DD 0x100000000 - (0xE85250D6 + 0 + (header_end - header_start))
+    DD -(0xE85250D6 + 0 + (header_end - header_start))
 
-    ; Memory Map Request
-    DW 4                     ; Type
-    DW 0                     ; Flags: Optional
-    DD 16                    ; Size
-    DD 0                     ; Reserved
-
-    ; Framebuffer Request
-    DW 5                     ; Type
-    DW 0                     ; Flags: Optional
-    DD 20                    ; Size
-    DD 1024                  ; Width (example: 1024 pixels)
-    DD 768                   ; Height (example: 768 pixels)
-    DD 32                    ; Bits per pixel (example: 32 bpp)
-
-    ; Bootloader Name Request
-    DW 2                     ; Type
-    DW 0                     ; Flags: Optional
-    DD 16                    ; Size
-
-    ; Command Line Request
-    DW 1                     ; Type
-    DW 0                     ; Flags: Optional
-    DD 16                    ; Size
-
-    ; Higher-half Kernel Request (Optional)
-    ; If your kernel runs in the higher-half memory (like `0xFFFFFFFF80000000`),
-    ; inform the bootloader to load it properly.
-    DW 9                     ; Type
-    DW 0                     ; Flags: Optional
-    DD 16                    ; Size
-    DD 0                     ; Reserved
+	; Framebuffer Request
+;	DW 5                     ; Tag type
+;	DW 0                     ; Flags: Optional
+;	DD 20                    ; Size
+;	DD 1024                  ; Width (example)
+;	DD 768                   ; Height (example)
+;	DD 32                    ; Bits per pixel (example)
 
     ; End Tag
     DW 0                     ; End tag type

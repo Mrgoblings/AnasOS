@@ -2,8 +2,8 @@ ENTRY(start_protected_mode)
 
 SECTIONS
 {
-    . = 0x0;
-    .boot :
+    . = 1M; /* Set the code starting address to 1MB */
+    .boot ALIGN(4096):
     {
         KEEP(*(.multiboot_header));
         *(.boot)
@@ -24,11 +24,11 @@ SECTIONS
 
     /* Memory map section for bootloader metadata */
     __bootloader_start = .;
-    _memory_map = .;  /* Memory map entry */
-    . += 4096;		/* Reserve 4KB for memory map */
+    _memory_map = .;    /* Memory map entry */
+    . += 4096;		    /* Reserve 4KB for memory map */
 
     /* Kernel metadata section */
-    .kernel :
+    .kernel ALIGN(4096):
     {
         _kernel_start_addr = .;
         *(.text)
@@ -43,7 +43,15 @@ SECTIONS
     {
         __bss_start = .;
         *(.bss)
-        *(COMMON)
+        *(COMMON)         /* Uninitialized global variables */
         __bss_end = .;
+    }
+
+    .debug :
+    {
+        *(.debug_info)
+        *(.debug_abbrev)
+        *(.debug_line)
+        *(.debug_str)
     }
 }

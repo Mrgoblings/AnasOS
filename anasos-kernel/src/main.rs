@@ -35,6 +35,32 @@ pub extern "C" fn _start(mb_magic: u32, mbi_ptr: u32) -> ! {
 
     println!("{:?}", boot_info);
 
+    // Access the memory map
+    if let Some(memory_map_tag) = boot_info.memory_map_tag() {
+        for area in memory_map_tag.memory_areas() {
+            println!(
+                "Memory area: start = {:#x}, length = {:#x}, type = {:?}",
+                area.start_address(),
+                area.size(),
+                area.typ()
+            );
+        }
+    }
+
+    // if let Some(framebuffer_tag) = boot_info.framebuffer_tag() {
+    //     let addr = framebuffer_tag.address();
+    //     let width = framebuffer_tag.width();
+    //     let height = framebuffer_tag.height();
+    //     let bpp = framebuffer_tag.bpp();
+    //     println!("Framebuffer at: {:#x}, {}x{} ({} bpp)", addr, width, height, bpp);
+    
+    //     // Example: Write a pixel
+    //     unsafe {
+    //         let framebuffer = addr as *mut u32;
+    //         *framebuffer = 0xFF00FF; // Magenta pixel
+    //     }
+    // }
+
     hlt();
 
     // lazy_static! {
