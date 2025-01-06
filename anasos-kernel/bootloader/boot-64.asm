@@ -21,13 +21,6 @@ start_long_mode:
     MOV RSI, RBX       ; Pass Multiboot2 info pointer (EBX) to _start (2nd argument in SysV ABI)
     CALL _start        ; Jump to Rust kernel
 
-    
-    ; ; Write the letter "W" to the VGA text buffer
-    ; MOV rdi, 0xB8000       ; VGA text buffer address (identity-mapped in page tables)
-    ; MOV ax, 0x0F53         ; "S" (ASCII 0x53) with attribute 0x0F (white on black)
-    ; MOV word [rdi], ax     ; Write the word (character + attribute) to the VGA buffer
-
-
     HLT
 
 

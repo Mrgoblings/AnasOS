@@ -31,11 +31,6 @@ pub fn hlt() -> ! {
     }
 }
 
-#[cfg(test)]
-// use bootloader::{entry_point, BootInfo};
-
-#[cfg(test)]
-// entry_point!(test_kernel_main);
 
 #[cfg(test)]
 #[no_mangle]

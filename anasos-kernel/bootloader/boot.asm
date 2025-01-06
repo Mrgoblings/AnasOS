@@ -12,8 +12,6 @@ GLOBAL stack_top
 
 EXTERN start_long_mode
 EXTERN save_boot_info
-; EXTERN do_e820
-; EXTERN _memory_map
 
 SECTION .text
 BITS 32
@@ -191,38 +189,6 @@ fill_page_table:
     RET
 
 
-; create_memory_map:
-;     lea di, es:[_memory_map]
-;    CALL do_e820
-
-; Function to print ASCII logo to the screen
-print_ascii_art:
-    PUSH esi                ; Save ESI (source index register)
-    MOV esi, ascii_art      ; Load the address of the ASCII art into ESI
-    MOV edi, 0xB8000        ; VGA text buffer address
-    MOV ah, 0x0F            ; White text on black background
-
-.print_loop:
-    LODSB                   ; Load the next byte from [ESI] into AL
-    CMP al, 0               ; Check for null terminator
-    JE .done                ; If null terminator, end loop
-
-    CMP al, 10              ; Check for line feed (newline)
-    JNE .print_char         ; If not a newline, print the character
-    ADD edi, 160            ; Move to the next line (80 columns * 2 bytes per char)
-    JMP .print_loop         ; Continue to the next character
-
-.print_char:
-    MOV [edi], al           ; Write the character to VGA memory
-    MOV [edi + 1], ah       ; Write the attribute byte
-    ADD edi, 2              ; Move to the next character position
-    JMP .print_loop         ; Continue to the next character
-
-.done:
-    POP esi                 ; Restore ESI
-    RET                     ; Return to the caller
-
-
 write_W_to_vga:
     ; Write the letter "W" to the VGA text buffer
     mov edi, 0xB8000      ; VGA text buffer address
@@ -230,6 +196,7 @@ write_W_to_vga:
     mov word [edi], ax    ; Write the word (character + attribute) to VGA memory
     HLT
     ; ret                   ; Return to the caller
+
 
 SECTION .data
 ALIGN 4096
