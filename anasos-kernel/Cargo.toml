@@ -12,7 +12,14 @@ spin = "0.9.8"
 x86_64 = "0.14.12"
 pic8259 = "0.10.1"
 pc-keyboard = "0.7.0"
+linked_list_allocator = "0.9.0"
+bootloader-x86_64-bios-common = "0.11.8"
+multiboot2 = "0.23.1"
 
 [dependencies.lazy_static]
 version = "1.0"
 features = ["spin_no_std"]
+
+[build-dependencies]
+llvm-tools = "0.1"
+toml = "0.5.1"

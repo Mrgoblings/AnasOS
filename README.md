@@ -1,5 +1,9 @@
 # AnasOS
 
+![alt AnasOS LOGO](/images/AnasOS-logo.png)
+
+**The logo was designed by [Yana Martinova](https://www.instagram.com/_vetrevo_/)**
+
 AnasOS is a lightweight operating system developed as a graduation project. The primary goal is to create a functional OS from scratch using modern technologies.
 
 ## Download
@@ -23,14 +27,10 @@ git clone https://github.com/Mrgoblings/AnasOS.git
 cd AnasOS
 ```
 
-2. **Install dependencies**:
+2. **Install dependencies in `Debian` based distros with the `apt` packet manager**:
 
 ```sh
-sudo apt update
-sudo apt install -y nasm grub-pc-bin grub-common make mtools xorriso
-rustup update nightly
-rustup target add x86_64-unknown-none --toolchain nightly
-rustup component add rust-src --toolchain nightly-x86_64-unknown-linux-gnu
+./install_dependencies.sh
 ```
 
 3. **Build & Run the OS in qemu**:
@@ -47,7 +47,8 @@ For more detailed instructions and documentation, please refer to the [docs/](do
 
 Here are some tutorials and resources that were used in the creation of AnasOS:
 
-- [ Writing an OS in Rust from Philipp Oppermann's blog](https://os.phil-opp.com/)
+- [Writing an OS in Rust from Philipp Oppermann's blog](https://os.phil-opp.com/)
+- [rust-osdev bootloader crate](https://github.com/rust-osdev/bootloader/blob/v0.9.25)
 - [Write Your Own 64-bit Operating System Kernel by CodePulse](https://www.youtube.com/playlist?list=PLZQftyCk7_SeZRitx5MjBKzTtvk0pHMtp)
 - [Making an OS (x86) by Daedalus Community](https://www.youtube.com/playlist?list=PLm3B56ql_akNcvH8vvJRYOc7TbYhRs19M)
 - [Operating Systems by OliveStem](https://www.youtube.com/playlist?list=PL2EF13wm-hWAglI8rRbdsCPq_wRpYvQQy)
@@ -60,6 +61,16 @@ Here are some tutorials and resources that were used in the creation of AnasOS:
 - [GNU GRUB Multiboot](https://www.gnu.org/software/grub/manual/multiboot/multiboot.html#OS-image-format)
 - [Paging in Operating System](https://www.geeksforgeeks.org/paging-in-operating-system/)
 
+Debugging:
+
+- [RiscV Debugging With QEMU, GDB, and VSCode by Chuck's Tech Talk](https://www.youtube.com/watch?v=NbZDowmXzZs)
+- [x86 Operating Systems - Debugging with GDB and QEMU by OliveStem](https://www.youtube.com/watch?v=q5vagAJ2YH8)
+- [Debugging BIOS Assembly Visually with Visual Studio Code and GDB [Ep 13] by sudocpp](https://www.youtube.com/watch?v=aMSFaAcup50)
+
 ## Author and Licensing
 
-AnasOS is developed by Emil Momchev. The project is licensed under the [MIT License](LICENSE). When distributing, mention the author and the repository.
+AnasOS is developed by Emil Momchev and licensed under the [MIT License](LICENSE). Please credit the author and repository when distributing.
+
+## Logo
+
+The AnasOS logo, created by Yana Martinova, is fully copyrighted. All rights are reserved by the creator.

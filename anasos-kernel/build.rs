@@ -1,45 +1,31 @@
 use std::env;
 use std::process::Command;
 
+fn assemble_file(input: &str, output: &str) {
+    let status = Command::new("nasm")
+        .args(&["-f", "elf64", input, "-o", output])
+        .status()
+        .expect(&format!("Failed to assemble {}", input));
+
+    if !status.success() {
+        panic!("Assembly of {} failed with status: {}", input, status);
+    }
+}
+
+
 fn main() {
-    let target_dir: String = env::var("OUT_DIR").unwrap(); 
+    let target_dir = env::var("OUT_DIR").unwrap();
 
-    let boot_o_path: String = format!("{}/boot.o", target_dir);
-    let boot_64_o_path: String = format!("{}/boot-64.o", target_dir);
-    let header_o_path = format!("{}/header.o", target_dir);
+    // Assemble ASM files
+    let asm_files = ["boot.asm", "boot-64.asm", "header.asm"];
+    for file in &asm_files {
+        let input_path = format!("bootloader/{}", file);
+        let output_path = format!("{}/{}.o", target_dir, file);
 
-
-    let status_boot = Command::new("nasm")
-        .args(&["-f", "elf64", "bootloader/boot.asm", "-o", &boot_o_path])
-        .status()
-        .expect("Failed to assemble boot.asm");
-
-    if !status_boot.success() {
-        panic!("Assembly of boot.asm failed with status: {}", status_boot);
+        assemble_file(&input_path, &output_path);
+        println!("cargo:rustc-link-arg={}", output_path);
     }
-
-    let status_boot_64 = Command::new("nasm")
-        .args(&["-f", "elf64", "bootloader/boot-64.asm", "-o", &boot_64_o_path])
-        .status()
-        .expect("Failed to assemble boot-64.asm");
-
-    if !status_boot_64.success() {
-        panic!("Assembly of boot.asm failed with status: {}", status_boot_64);
-    }
-
-    let status_header = Command::new("nasm")
-        .args(&["-f", "elf64", "bootloader/header.asm", "-o", &header_o_path])
-        .status()
-        .expect("Failed to assemble header.asm");
-
-    if !status_header.success() {
-        panic!("Assembly of header.asm failed with status: {}", status_header);
-    }
-
 
     // Custom linker arguments
     println!("cargo:rustc-link-arg=-Tlinker.ld");
-    println!("cargo:rustc-link-arg={}", boot_o_path);
-    println!("cargo:rustc-link-arg={}", boot_64_o_path);
-    println!("cargo:rustc-link-arg={}", header_o_path);
 }
