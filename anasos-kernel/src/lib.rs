@@ -12,7 +12,6 @@ pub mod allocator;
 pub mod interrupts;
 pub mod vga;
 pub mod gdt;
-pub mod bootinfo;
 pub mod memory;
 
 extern crate multiboot2;

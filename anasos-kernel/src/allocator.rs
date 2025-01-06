@@ -39,7 +39,6 @@ pub fn init_heap(
     };
 
     for page in page_range {
-        println!("Page {:?}", page);
         let frame = frame_allocator
             .allocate_frame()
             .ok_or(MapToError::FrameAllocationFailed)?;
