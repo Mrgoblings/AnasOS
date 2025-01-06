@@ -15,6 +15,9 @@ pub mod gdt;
 pub mod bootinfo;
 pub mod memory;
 
+extern crate multiboot2;
+use multiboot2::BootInformation;
+
 
 pub fn init() {
     gdt::init();
@@ -37,7 +40,7 @@ pub fn hlt() -> ! {
 
 #[cfg(test)]
 #[no_mangle]
-pub extern "C" fn _start() -> ! {
+pub extern "C" fn _start(_boot_info: &BootInformation) -> ! {
     init();
     test_kernel_main();
     hlt();

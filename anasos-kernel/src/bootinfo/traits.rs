@@ -6,7 +6,7 @@
 
 use crate::println;
 
-use super::memory_map::MemoryMap;
+use crate::memory::memory_map::MemoryMap;
 
 
 /// This structure represents the information that the bootloader passes to the kernel.

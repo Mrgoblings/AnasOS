@@ -1,5 +1,8 @@
 // use bootloader::bootinfo::{MemoryMap, MemoryRegionType};
-use crate::{bootinfo::memory_map::{MemoryMap, MemoryRegionType}, println};
+pub mod memory_map;
+use memory_map::{MemoryMap, MemoryRegionType};
+
+use crate::println;
 
 use x86_64::{
     structures::paging::{

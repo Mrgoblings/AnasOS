@@ -2,7 +2,7 @@
 use core::slice;
 
 // use fixedvec::{alloc_stack, FixedVec};
-use memory_map::{E820MemoryRegion, FrameRange, MemoryMap, MemoryRegion, MemoryRegionType};
+use crate::memory::memory_map::{E820MemoryRegion, FrameRange, MemoryMap, MemoryRegion, MemoryRegionType};
 use traits::BootInfo;
 use usize_conversions::usize_from;
 
@@ -16,10 +16,9 @@ use x86_64::{PhysAddr, VirtAddr};
 
 // use crate::println;
 
-pub mod frame_allocator;
-pub mod level4_entries;
-pub mod memory_map;
-pub mod page_table;
+// pub mod frame_allocator;
+// pub mod level4_entries;
+// pub mod page_table;
 pub mod traits;
 
 pub fn create_from(memory_map_addr: VirtAddr, entry_count: u64) -> MemoryMap {
@@ -48,22 +47,22 @@ pub fn create_from(memory_map_addr: VirtAddr, entry_count: u64) -> MemoryMap {
     memory_map
 }
 
-// pub struct IdentityMappedAddr(PhysAddr);
+pub struct IdentityMappedAddr(PhysAddr);
 
-// #[warn(dead_code)]
-// impl IdentityMappedAddr {
-//     fn phys(&self) -> PhysAddr {
-//         self.0
-//     }
+#[warn(dead_code)]
+impl IdentityMappedAddr {
+    fn phys(&self) -> PhysAddr {
+        self.0
+    }
 
-//     fn virt(&self) -> VirtAddr {
-//         VirtAddr::new(self.0.as_u64())
-//     }
+    fn virt(&self) -> VirtAddr {
+        VirtAddr::new(self.0.as_u64())
+    }
 
-//     fn as_u64(&self) -> u64 {
-//         self.0.as_u64()
-//     }
-// }
+    fn as_u64(&self) -> u64 {
+        self.0.as_u64()
+    }
+}
 
 // // The bootloader_config.rs file contains some configuration constants set by the build script:
 // // PHYSICAL_MEMORY_OFFSET: The offset into the virtual address space where the physical memory
