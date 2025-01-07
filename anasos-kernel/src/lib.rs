@@ -13,6 +13,7 @@ pub mod interrupts;
 pub mod vga;
 pub mod gdt;
 pub mod memory;
+pub mod task;
 
 extern crate multiboot2;
 use multiboot2::BootInformation;
