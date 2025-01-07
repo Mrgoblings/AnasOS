@@ -2,12 +2,11 @@
 #![no_main]
 
 extern crate alloc;
-
-use alloc::{boxed::Box, rc::Rc, vec, vec::Vec};
 use core::panic::PanicInfo;
 
 use anasos_kernel::{ 
-    allocator, hlt, init, memory::{ self, memory_map::{FromMemoryMapTag, MemoryMap}, BootInfoFrameAllocator}, print, println, task::{keyboard, simple_executor::SimpleExecutor, Task}
+    allocator, hlt, init, memory::{ self, memory_map::{FromMemoryMapTag, MemoryMap}, BootInfoFrameAllocator}, 
+    println, task::{executor::Executor, keyboard, Task}
 };
 use x86_64::VirtAddr;
 
@@ -64,7 +63,6 @@ pub extern "C" fn _start(mb_magic: u32, mbi_ptr: u32) -> ! {
     // #[cfg(test)]
     // test_kernel_main(&*BOOT_INFO);
 
-    hlt();
 }
 
 #[panic_handler]
@@ -74,7 +72,7 @@ fn panic(info: &PanicInfo) -> ! {
 }
 
 
-fn kernel_main(boot_info: &BootInformation) {
+fn kernel_main(boot_info: &BootInformation) -> ! {
     println!("Hello World{}", "!");
     init();
 
@@ -86,20 +84,18 @@ fn kernel_main(boot_info: &BootInformation) {
     allocator::init_heap(&mut mapper, &mut frame_allocator).expect("heap initialization failed");
 
 
-    let mut executor = SimpleExecutor::new();
+    let mut executor = Executor::new();
     executor.spawn(Task::new(example_task()));
     executor.spawn(Task::new(keyboard::print_keypresses()));
-    executor.run();
-
-    
-
-    println!("Still Alive!");
+    executor.run(); // This function will never return
 }
 
-fn test_kernel_main(_boot_info: & BootInformation) {
+fn test_kernel_main(_boot_info: & BootInformation) -> ! {
     println!("Running tests");
     // test code here
     println!("Tests passed");
+
+    hlt(); 
 }
 
 

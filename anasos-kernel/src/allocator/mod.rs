@@ -6,9 +6,8 @@ use x86_64::{
     VirtAddr,
 };
 
-use crate::println;
-
 pub mod fixed_size_block;
+
 
 unsafe extern "C" {
     unsafe static heap_bottom: usize;
