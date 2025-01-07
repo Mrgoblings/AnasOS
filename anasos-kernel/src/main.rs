@@ -99,11 +99,7 @@ fn test_kernel_main(_boot_info: & BootInformation) -> ! {
 }
 
 
-
-
-
-
-
+// Test async functions
 async fn async_number() -> u32 {
     42
 }
