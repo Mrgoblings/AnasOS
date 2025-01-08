@@ -8,7 +8,6 @@ use x86_64::{
 
 pub mod fixed_size_block;
 
-
 unsafe extern "C" {
     unsafe static heap_bottom: usize;
     unsafe static heap_top: usize;
