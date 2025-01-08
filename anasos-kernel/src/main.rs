@@ -48,6 +48,7 @@ pub extern "C" fn _start(mb_magic: u32, mbi_ptr: u32) -> ! {
         let width = framebuffer_tag.width();
         let height = framebuffer_tag.height();
         let bpp = framebuffer_tag.bpp();
+        framebuffer_tag.address();
 
         println!("Framebuffer at: {:#x}, {}x{} ({} bpp)", addr, width, height, bpp);
     } else {
