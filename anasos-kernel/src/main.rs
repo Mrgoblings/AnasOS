@@ -9,6 +9,11 @@ use anasos_kernel::{
 };
 use x86_64::VirtAddr;
 
+use x86_64::{
+    structures::paging::{PageTable, PhysFrame, Translate},
+    PhysAddr,
+};
+
 
 extern crate multiboot2;
 use multiboot2::{BootInformation, BootInformationHeader};
@@ -38,20 +43,6 @@ pub extern "C" fn _start(mb_magic: u32, mbi_ptr: u32) -> ! {
                 area.typ()
             );
         }
-    }
-
-    println!("");
-
-    if let Some(Ok(framebuffer_tag)) = boot_info.framebuffer_tag() {
-        let addr = framebuffer_tag.address();
-        let width = framebuffer_tag.width();
-        let height = framebuffer_tag.height();
-        let bpp = framebuffer_tag.bpp();
-        framebuffer_tag.address();
-
-        println!("Framebuffer at: {:#x}, {}x{} ({} bpp)", addr, width, height, bpp);
-    } else {
-        println!("No framebuffer tag found");
     }
 
     println!("");
@@ -87,6 +78,49 @@ fn kernel_main(boot_info: &BootInformation) -> ! {
     allocator::init_heap(&mut mapper, &mut frame_allocator).expect("heap initialization failed");
 
 
+    if let Some(Ok(framebuffer_tag)) = boot_info.framebuffer_tag() {
+        let mut addr = framebuffer_tag.address() as *mut u64;
+        let width = framebuffer_tag.width();
+        let height = framebuffer_tag.height();
+        let bpp = framebuffer_tag.bpp();
+
+        println!("Framebuffer from address: {:#x} to address: {:#x}", addr as u64, (addr as u64) + (width * height * (bpp as u32) / 8) as u64);
+        
+        // check if address is identity mapped
+        if is_identity_mapped(VirtAddr::new(addr as u64), &mapper) {
+            println!("Framebuffer address is identity mapped");
+        } else {
+            println!("Framebuffer address is not identity mapped");
+        }
+
+        if bpp == 32 {
+            let pitch = framebuffer_tag.pitch();
+            // make_screen_green(addr, width, height, pitch, bpp);
+
+            // unsafe {
+            //     println!("Pixel value before: {:#x}", *addr);
+            //     *addr = 0x00FF00; // Set to green
+            //     println!("Pixel value after: {:#x}", *addr);
+            // }
+
+            unsafe {
+                core::arch::asm!(
+                    "mov eax, 0x00FF00",       // Green color
+                    "mov [0xFD000000], eax",  // Write to framebuffer address
+                );
+            }
+
+        } else {
+            println!("Unsupported bits per pixel: {}", bpp);
+        }
+
+        println!("Framebuffer at: {:#x}, {}x{} ({} bpp)", addr as u64, width, height, bpp);
+    } else {
+        println!("No framebuffer tag found");
+    }
+
+
+
     let mut executor = Executor::new();
     executor.spawn(Task::new(example_task()));
     executor.spawn(Task::new(keyboard::print_keypresses()));
@@ -110,4 +144,35 @@ async fn async_number() -> u32 {
 async fn example_task() {
     let number = async_number().await;
     println!("async number: {}", number);
+}
+
+
+fn make_screen_green(framebuffer: *mut u64, width: u32, height: u32, pitch: u32, bpp: u8) {
+    let green_color: u64 = 0x00FF00; // Green in 32-bit ARGB
+
+    unsafe {
+        for y in 0..height {
+            for x in 0..width {
+                println!("x: {}, y: {}", x, y);
+                let pixel_offset: u64 = (y * (pitch as u32) + x * ((bpp as u32) / 8)).into();
+                println!("pixel_offset: {}", pixel_offset);
+                let pixel_ptr = framebuffer.add(pixel_offset as usize) as *mut u64;
+                println!("pixel_ptr: {:?}", pixel_ptr);
+                println!("pixel_ptr value: {:?}", *pixel_ptr);
+                *pixel_ptr = green_color;
+                println!("After pixel_ptr value: {:?}", *pixel_ptr);
+            }
+        }
+    }
+}
+
+
+fn is_identity_mapped(virtual_address: VirtAddr, mapper: &impl Translate) -> bool {
+    if let Some(physical_address) = mapper.translate_addr(virtual_address) {
+        // Compare physical and virtual addresses
+        physical_address.as_u64() == virtual_address.as_u64()
+    } else {
+        // Address is not mapped at all
+        false
+    }
 }

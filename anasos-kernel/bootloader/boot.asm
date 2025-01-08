@@ -109,7 +109,7 @@ setup_page_tables:
     OR eax, 0b11               ; Present, Writable
     MOV [PD + 16], eax         ; Write third PDE
 
-    MOV ecx, 3                ; Number of page tables to fill (3 iterations)
+    MOV ecx, 0                ; Number of page tables to fill (3 iterations)
     XOR edi, edi              ; Initialize loop counter (edi = 0)
 
 .fill_loop:
@@ -119,8 +119,12 @@ setup_page_tables:
     MOV ebx, edi              ; Set the offset (2 MiB chunks)
     SHR edi, 1                ; Restore edi (undo the shift for next iteration)
     CALL fill_page_table      ; Call the function to fill the page table
+
     ADD edi, 0x1000           ; Move to the next page table (PT + 0x1000 * i)
-    LOOP .fill_loop            ; Decrement ecx and loop if ecx > 0
+    
+    INC ecx
+    CMP ecx, 3
+    JL .fill_loop
 
     RET
 
