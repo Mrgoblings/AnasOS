@@ -197,19 +197,6 @@ write_W_to_vga:
     HLT
     ; ret                   ; Return to the caller
 
-
-SECTION .data
-ALIGN 4096
-ascii_art:
-    db "     __    _   _    __    ____    ____     _____", 0x0F, 10, 0
-    db "    /  \\  | \\ | |  /  \\  / ___7  / __ \\   / ____>", 0x0F, 10, 0
-    db "   / /\\ \\ |  \\| | / /\\ \\ \\___ \\ | |  | | | (_____", 0x0F, 10, 0
-    db "  / ____ \\| |\\  |/ ____ \\___) | | |  | |  \\____  \\", 0x0F, 10, 0
-    db " / /    \\ \\_| \\_|_/    \\_\\____/ | |  | |  _____) |", 0x0F, 10, 0
-    db "/_|      \\_\\                     \\____/  |______/", 0x0F, 10, 0
-    db 0  ; Null terminator for end of data
-
-
 SECTION .bss
 ALIGN 4096
 start_page_table:
