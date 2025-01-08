@@ -97,33 +97,31 @@ setup_page_tables:
     MOV [PDPT], eax
 
     ; Initialize the level 2 page table (PD) with three PDEs
-    MOV eax, PT                ; First page table
-    OR eax, 0b11               ; Present, Writable
-    MOV [PD], eax
-
-    MOV eax, PT + 0x1000       ; Second page table
-    OR eax, 0b11               ; Present, Writable
-    MOV [PD + 8], eax          ; Write second PDE
-
-    MOV eax, PT + 0x2000       ; Third page table
-    OR eax, 0b11               ; Present, Writable
-    MOV [PD + 16], eax         ; Write third PDE
-
-    MOV ecx, 0                ; Number of page tables to fill (3 iterations)
-    XOR edi, edi              ; Initialize loop counter (edi = 0)
-
+    MOV edi, 5                ; Set number of Level 1 page tables each by 2 MiB
+    XOR ecx, ecx              ; Loop counter
 .fill_loop:
-    MOV eax, PT               ; Base of the first page table
-    ADD eax, edi              ; Adjust base by loop counter (edi * 0x1000)
-    SHL edi, 1                ; Calculate offset in MiB (edi * 2)
-    MOV ebx, edi              ; Set the offset (2 MiB chunks)
-    SHR edi, 1                ; Restore edi (undo the shift for next iteration)
-    CALL fill_page_table      ; Call the function to fill the page table
+    MOV eax, PT               ; First page table
+    SHL ecx, 12               ; Calculate offset in bytes (0x1000 * ecx)
+    ADD eax, ecx              ; Adjust base by loop counter (edi * 0x1000)
+    SHR ecx, 12               ; Restore ecx (undo the shift for next iteration)
+    OR eax, 0b11              ; Present, Writable
+    
+    MOV ebx, PD               ; Base of the second page table
+    SHL ecx, 3                ; Calculate offset in bytes (8 * ecx)
+    ADD ebx, ecx              ; Adjust base by loop counter (ecx * 8)
+    SHR ecx, 3                ; Restore ecx (undo the shift for next iteration)
+    MOV [ebx], eax             ; Write the entry to the second page table
 
-    ADD edi, 0x1000           ; Move to the next page table (PT + 0x1000 * i)
+    MOV eax, PT               ; Base of the first page table
+    SHL ecx, 12               ; Calculate offset in bytes (0x1000 * ecx)
+    ADD eax, ecx              ; Adjust base by loop counter (edi * 0x1000)
+    SHL ecx, 1                ; Calculate offset in MiB (ecx * 2)
+    MOV ebx, ecx              ; Set the offset (2 MiB chunks)
+    SHR ecx, 13               ; Restore ecx (undo the shift for next iteration)
+    CALL fill_page_table      ; Call the function to fill the page table
     
     INC ecx
-    CMP ecx, 3
+    CMP ecx, edi              
     JL .fill_loop
 
     RET
@@ -211,7 +209,7 @@ PDPT:
 PD:
     RESB 4096                ; Level 2 Page Table
 PT:
-    RESB 4096 * 3            ; Three Level 1 Page Tables (512 entries each)
+    RESB 4096 * 5            ; Three Level 1 Page Tables (512 entries each)
 end_page_table:
 stack_bottom:
     RESB 4096 * 5 ; bytes reserved for stack (5 pages)
