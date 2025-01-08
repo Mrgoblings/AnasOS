@@ -5,8 +5,7 @@ extern crate alloc;
 use core::panic::PanicInfo;
 
 use anasos_kernel::{ 
-    allocator, hlt, init, memory::{ self, memory_map::{FromMemoryMapTag, MemoryMap}, BootInfoFrameAllocator}, 
-    println, task::{executor::Executor, keyboard, Task}
+    allocator, hlt, init, memory::{ self, memory_map::{FromMemoryMapTag, MemoryMap}, BootInfoFrameAllocator}, println, serial_println, task::{executor::Executor, keyboard, Task}
 };
 use x86_64::VirtAddr;
 
@@ -69,6 +68,9 @@ pub extern "C" fn _start(mb_magic: u32, mbi_ptr: u32) -> ! {
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
     println!("Panicked: \n{}", info);
+    serial_println!("[failed]\n");
+    serial_println!("Error: {}\n", info);
+
     hlt();
 }
 

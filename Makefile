@@ -29,10 +29,10 @@ image:
 	grub-mkrescue -o AnasOS.iso AnasOS/
 
 run:
-	qemu-system-x86_64 AnasOS.iso -vga std -serial file:serial.log
+	qemu-system-x86_64 AnasOS.iso -vga std -device isa-debug-exit,iobase=0xf4,iosize=0x04 -serial stdio
 
 run-vnc:
-	qemu-system-x86_64 AnasOS.iso -vga std -serial file:serial.log -vnc :0
+	qemu-system-x86_64 AnasOS.iso -vga std -device isa-debug-exit,iobase=0xf4,iosize=0x04 -serial stdio -vnc :0
 
 clean:
 	-@cd ./anasos-kernel && cargo clean > /dev/null 2>&1

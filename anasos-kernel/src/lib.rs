@@ -14,6 +14,7 @@ pub mod vga;
 pub mod gdt;
 pub mod memory;
 pub mod task;
+pub mod serial;
 
 extern crate multiboot2;
 use multiboot2::BootInformation;
