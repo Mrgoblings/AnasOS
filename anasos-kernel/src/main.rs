@@ -10,6 +10,7 @@ use anasos_kernel::{
     }, println, serial_println, task::{executor::Executor, keyboard, Task},
     framebuffer_off
 };
+use embedded_graphics::{mono_font::{ascii::FONT_6X9, MonoTextStyleBuilder}, pixelcolor::Rgb888, prelude::*, primitives::{Circle, PrimitiveStyleBuilder}, text::Text};
 use x86_64::{structures::paging::{frame, Translate}, PhysAddr, VirtAddr};
 
 
@@ -87,26 +88,39 @@ fn kernel_main(boot_info: &BootInformation) -> ! {
 
     let mut frame_allocator = unsafe { BootInfoFrameAllocator::init(&mut memory_map, framebuffer_start, framebuffer_start + framebuffer_size) };
     allocator::init_heap(&mut mapper, &mut frame_allocator).expect("Heap initialization failed");
-    //framebuffer::init(&framebuffer_tag, &mut mapper, &mut frame_allocator);
     
-    
-    // framebuffer::map_framebuffer(
-    //     framebuffer_phys_addr,
-    //     framebuffer_size,
-    //     framebuffer_virt_addr,
-    //     &mut mapper,
-    //     &mut frame_allocator,
-    // ).expect("Failed to map framebuffer");
+    framebuffer::map_framebuffer(framebuffer_phys_addr, framebuffer_size, VirtAddr::new(framebuffer_phys_addr.as_u64()), &mut mapper, &mut frame_allocator).expect("Framebuffer mapping failed");
+    framebuffer::check_framebuffer_mapping(&mut mapper, framebuffer_tag);
 
-    // Initialize the framebuffer
-    let mut framebuffer: Framebuffer<AlphaPixel> = Framebuffer::new(
-        framebuffer_tag.width() as usize,
-        framebuffer_tag.height() as usize,
-        Some(framebuffer_phys_addr),
-        &mut mapper,
-        &mut frame_allocator,
-    )
-    .expect("Failed to initialize framebuffer");
+
+    let mut framebuffer = framebuffer_off::Framebuffer::new(
+        framebuffer_height as usize,
+        framebuffer_width as usize,
+        unsafe { core::slice::from_raw_parts_mut(0xfd000000 as *mut u8, framebuffer_height as usize * framebuffer_width as usize * (framebuffer_tag.bpp() / 8) as usize) },
+    );
+
+    // Draw a circle
+    let style = PrimitiveStyleBuilder::new()
+    .stroke_color(Rgb888::RED)
+    .stroke_width(1)
+    .fill_color(Rgb888::GREEN)
+    .build();
+
+    Circle::new(Point::new(100, 100), 50)
+    .into_styled(style)
+    .draw(&mut framebuffer)
+    .unwrap();
+
+
+    // Draw text
+    let text_style = MonoTextStyleBuilder::new()
+    .font(&FONT_6X9)
+    .text_color(Rgb888::WHITE)
+    .build();
+
+    Text::new("Hello, OS!", Point::new(10, 10), text_style)
+    .draw(&mut framebuffer)
+    .unwrap();
 
     if is_identity_mapped(VirtAddr::new(framebuffer_phys_addr.as_u64()), &mapper) {
         println!("Framebuffer identity mapped to address: {:?}", framebuffer_phys_addr.as_u64());
@@ -114,37 +128,12 @@ fn kernel_main(boot_info: &BootInformation) -> ! {
         println!("Framebuffer not identity mapped");
     }
 
-    println!("Framebuffer identity mapped to address: {:?}", framebuffer.buffer_mut().as_ptr());
+    // println!("Framebuffer identity mapped to address: {:?}", framebuffer.buffer_mut().as_ptr());
     
     println!(
         "Framebuffer info: width = {}, height = {}",
         framebuffer_width, framebuffer_height
     );
-
-    // framebuffer::map_framebuffer_page_table(&mut mapper, &mut frame_allocator, framebuffer_tag);
-    // framebuffer::check_framebuffer_mapping(&mapper, framebuffer_tag);
-
-    // unsafe {
-    //     println!("Pixel value before: {:#x}", *(framebuffer_virt_addr.as_mut_ptr::<u32>()));
-    //     *(framebuffer_virt_addr.as_mut_ptr::<u32>()) = 0x00FF00; // Set to green
-    //     println!("Pixel value after: {:#x}", *(framebuffer_virt_addr.as_mut_ptr::<u32>()));
-    // }
-
-
-    // Fill the screen with green
-    let green_pixel: AlphaPixel = color::GREEN.into();
-    framebuffer.overwrite_pixel(3, 3, green_pixel);
-    // framebuffer.fill(green_pixel);
-
-    // println!("Screen filled with green color.");
-
-
-// unsafe {
-//     core::arch::asm!(
-//         "mov eax, 0x00FF00",     // Green color
-//         "mov [0xFD000000], eax", // Write to framebuffer address
-//     );
-// }
 
 
     let mut executor = Executor::new();
@@ -162,15 +151,29 @@ fn test_kernel_main(_boot_info: &BootInformation) -> ! {
     hlt();
 }
 
+
 // Test async functions
 async fn async_number() -> u32 {
     42
 }
 
+
 async fn example_task() {
     let number = async_number().await;
     println!("async number: {}", number);
 }
+
+
+fn is_identity_mapped(virtual_address: VirtAddr, mapper: &impl Translate) -> bool {
+    if let Some(physical_address) = mapper.translate_addr(virtual_address) {
+        // Compare physical and virtual addresses
+        physical_address.as_u64() == virtual_address.as_u64()
+    } else {
+        // Address is not mapped at all
+        false
+    }
+}
+
 
 // fn make_screen_green(framebuffer: *mut u32, width: u32, height: u32, pitch: u32, bpp: u8) {
 //     let green_color: u32 = 0x00FF0000; // Green in 32-bit ARGB
@@ -192,12 +195,41 @@ async fn example_task() {
 //     }
 // }
 
-fn is_identity_mapped(virtual_address: VirtAddr, mapper: &impl Translate) -> bool {
-    if let Some(physical_address) = mapper.translate_addr(virtual_address) {
-        // Compare physical and virtual addresses
-        physical_address.as_u64() == virtual_address.as_u64()
-    } else {
-        // Address is not mapped at all
-        false
-    }
-}
+
+    // framebuffer::map_framebuffer_page_table(&mut mapper, &mut frame_allocator, framebuffer_tag);
+    // framebuffer::check_framebuffer_mapping(&mapper, framebuffer_tag);
+
+    // unsafe {
+    //     println!("Pixel value before: {:#x}", *(framebuffer_virt_addr.as_mut_ptr::<u32>()));
+    //     *(framebuffer_virt_addr.as_mut_ptr::<u32>()) = 0x00FF00; // Set to green
+    //     println!("Pixel value after: {:#x}", *(framebuffer_virt_addr.as_mut_ptr::<u32>()));
+    // }
+
+    //framebuffer::init(&framebuffer_tag, &mut mapper, &mut frame_allocator);
+    
+
+    // Initialize the framebuffer
+    // let mut framebuffer: Framebuffer<AlphaPixel> = Framebuffer::new(
+    //     framebuffer_tag.width() as usize,
+    //     framebuffer_tag.height() as usize,
+    //     Some(framebuffer_phys_addr),
+    //     &mut mapper,
+    //     &mut frame_allocator,
+    // )
+    // .expect("Failed to initialize framebuffer");
+
+
+    // Fill the screen with green
+    // let green_pixel: AlphaPixel = color::GREEN.into();
+    // framebuffer.overwrite_pixel(3, 3, green_pixel);
+    // framebuffer.fill(green_pixel);
+
+    // println!("Screen filled with green color.");
+
+
+// unsafe {
+//     core::arch::asm!(
+//         "mov eax, 0x00FF00",     // Green color
+//         "mov [0xFD000000], eax", // Write to framebuffer address
+//     );
+// }
