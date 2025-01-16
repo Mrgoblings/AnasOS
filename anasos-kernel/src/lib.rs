@@ -16,9 +16,11 @@ pub mod memory;
 pub mod task;
 pub mod serial;
 pub mod framebuffer;
+pub mod framebuffer_theseus;
+pub mod framebuffer_off;
 
 extern crate multiboot2;
-use multiboot2::BootInformation;
+// use multiboot2::BootInformation;
 
 
 pub fn init() {

@@ -22,8 +22,8 @@ header_start:
     DW 5                     ; Tag type: Framebuffer
     DW 0                     ; Flags: Optional
     DD 20                    ; Size of this tag
-    DD 1366                  ; Preferred framebuffer width
-    DD 768                   ; Preferred framebuffer height
+    DD 1280                  ; Preferred framebuffer width
+    DD 720                   ; Preferred framebuffer height
     DD 32                    ; Preferred bits per pixel
 
     ; End Tag

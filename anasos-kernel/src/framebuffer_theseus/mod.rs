@@ -1,181 +1,116 @@
 //FROM https://www.theseus-os.com/Theseus/doc/src/framebuffer/lib.rs.html
 
-//! This crate defines a `Framebuffer` structure, which is effectively a region of memory
-//! that is interpreted as a 2-D array of pixels.
+use alloc::vec::Vec;
+use x86_64::structures::paging::{Mapper, OffsetPageTable, Page, PageSize, PageTableFlags, PhysFrame, Size4KiB};
+use x86_64::{PhysAddr, VirtAddr};
+use crate::println;
+use crate::memory::BootInfoFrameAllocator;
+use core::marker::PhantomData;
+use pixel::Pixel;
 
+pub mod color;
 pub mod pixel;
 pub mod shapes;
-pub mod color;
-use core::{ops::{DerefMut, Deref}, hash::{Hash, Hasher}};
-use memory::{PteFlags, PteFlagsArch, PhysicalAddress, Mutable, BorrowedSliceMappedPages};
-use shapes::Coord;
-pub use pixel::*;
 
-use crate::println;
-
-/// A framebuffer is a region of memory interpreted as a 2-D array of pixels.
-/// The memory buffer is a rectangular region with a width and height.
-pub struct Framebuffer<P: Pixel> {
+/// A framebuffer is a region of memory interpreted as a 2D array of pixels.
+pub struct Framebuffer<P: Pixel + 'static> {
     width: usize,
     height: usize,
-    buffer: BorrowedSliceMappedPages<P, Mutable>,
-} 
-impl<P: Pixel> Hash for Framebuffer<P> {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.width.hash(state);
-        self.height.hash(state);
-        self.buffer.deref().hash(state);
-    }
+    buffer: &'static mut [P],
+    _pixel_type: PhantomData<P>,
 }
 
 impl<P: Pixel> Framebuffer<P> {
-    /// Creates a new framebuffer with rectangular dimensions of `width * height`, 
-    /// specified in number of pixels.
+    /// Creates a new framebuffer with the given dimensions and maps it to the physical memory region.
     ///
-    /// If `physical_address` is `Some`, the returned framebuffer will be a real physical one,
-    /// i.e., mapped to the physical memory at that address, which is typically hardware graphics memory.
-    /// In this case, we attempt to map the memory as "write-combining", which only works
-    /// on x86 if the Page Attribute Table feature is enabled.
-    /// Otherwise, we map the real physical framebuffer memory with all caching disabled.
-    ///
-    /// If `physical_address` is `None`, the returned framebuffer is a "virtual" one 
-    /// that renders to a randomly-allocated chunk of memory.
+    /// # Arguments
+    /// - `width`: Width of the framebuffer in pixels.
+    /// - `height`: Height of the framebuffer in pixels.
+    /// - `physical_address`: Physical address of the framebuffer, if any.
+    /// - `mapper`: The `OffsetPageTable` used for virtual memory mappings.
+    /// - `frame_allocator`: The frame allocator for managing memory.
     pub fn new(
         width: usize,
         height: usize,
-        physical_address: Option<PhysicalAddress>,
-    ) -> Result<Framebuffer<P>, &'static str> {
-        let kernel_mmi_ref = memory::get_kernel_mmi_ref().ok_or("KERNEL_MMI was not yet initialized!")?;            
+        physical_address: Option<PhysAddr>,
+        mapper: &mut OffsetPageTable,
+        frame_allocator: &mut BootInfoFrameAllocator,
+    ) -> Result<Self, &'static str> {
         let size = width * height * core::mem::size_of::<P>();
-        let pages = memory::allocate_pages_by_bytes(size)
-            .ok_or("could not allocate pages for a new framebuffer")?;
+        let size_in_pages = (size + Size4KiB::SIZE as usize - 1) / Size4KiB::SIZE as usize;
 
-        let mapped_framebuffer = if let Some(address) = physical_address {
-            // For best performance, we map the real physical framebuffer memory
-            // as write-combining using the PAT (on x86 only).
-            // If PAT isn't available, fall back to disabling caching altogether.
-            let mut flags: PteFlagsArch = PteFlags::new()
-                .valid(true)
-                .writable(true)
-                .into();
+        println!("\n\nCreating framebuffer with size: {} bytes, {} pages", size, size_in_pages);
 
-            #[cfg(target_arch = "x86_64")] {
-                if page_attribute_table::is_supported() {
-                    flags = flags.pat_index(
-                        page_attribute_table::MemoryCachingType::WriteCombining.pat_slot_index()
-                    );
-                    println!("Using PAT write-combining mapping for real physical framebuffer memory");
-                } else {
-                    flags = flags.device_memory(true);
-                    println!("Falling back to cache-disable mapping for real physical framebuffer memory");
+        let framebuffer_start_virt = match physical_address {
+            Some(phys_addr) => {
+                // Map the framebuffer's physical memory to a virtual memory region.
+                let mut framebuffer_pages = Vec::new();
+                for i in 0..size_in_pages {
+                    let phys_frame: PhysFrame<Size4KiB> = PhysFrame::containing_address(phys_addr + (i as u64 * Size4KiB::SIZE as u64));
+                    let page: Page<Size4KiB> = Page::containing_address(VirtAddr::new(phys_addr.as_u64() + (i as u64 * (Size4KiB::SIZE as u64))));
+
+                    unsafe {
+                        mapper
+                            .map_to(page, phys_frame, PageTableFlags::PRESENT | PageTableFlags::WRITABLE | PageTableFlags::NO_CACHE, frame_allocator)
+                            .map_err(|_| "Failed to map framebuffer pages")?
+                                .flush();
+                    }
+                    framebuffer_pages.push(page);
                 }
-            }
-            #[cfg(not(target_arch = "x86_64"))] {
-                flags = flags.device_memory(true);
-            }
 
-            let frames = memory::allocate_frames_by_bytes_at(address, size)
-                .map_err(|_e| "Couldn't allocate frames for the final framebuffer")?;
-            let fb_mp = kernel_mmi_ref.lock().page_table.map_allocated_pages_to(
-                pages,
-                frames,
-                flags,
-            )?;
-            println!("Mapped real physical framebuffer: {fb_mp:?}");
-            fb_mp
-        } else {
-            kernel_mmi_ref.lock().page_table.map_allocated_pages(
-                pages,
-                PteFlags::new().valid(true).writable(true),
-            )?
+                framebuffer_pages[0].start_address().as_u64()
+            }
+            None => return Err("Virtual framebuffer creation is not yet implemented"),
         };
 
-        Ok(Framebuffer {
+        // Create a mutable slice to access the framebuffer.
+        let buffer = unsafe {
+            let ptr = framebuffer_start_virt as *mut P;
+            core::slice::from_raw_parts_mut(ptr, width * height)
+        };
+        println!("Framebuffer virtual address: {:#x}", framebuffer_start_virt);
+        println!("Framebuffer physical address: {:#x}", physical_address.unwrap().as_u64());
+        // println!("value at framebuffer_start_virt: {:#x}", buffer[0]);
+        println!("Moved after reading framebuffer_start_virt");
+
+        Ok(Self {
             width,
             height,
-            buffer: mapped_framebuffer.into_borrowed_slice_mut(0, width * height)
-                .map_err(|(|_mp, s)| s)?,
+            buffer,
+            _pixel_type: PhantomData,
         })
     }
 
-    /// Returns a mutable reference to this framebuffer's memory as a slice of pixels.
+    /// Returns a mutable reference to the framebuffer memory.
     pub fn buffer_mut(&mut self) -> &mut [P] {
-        &mut self.buffer
+        self.buffer
     }
 
-    /// Returns a reference to this framebuffer's memory as a slice of pixels.
-    pub fn buffer(&self) -> &[P] {
-        &self.buffer
-    }
-
-    /// Returns the `(width, height)` of this framebuffer.
-    pub fn get_size(&self) -> (usize, usize) {
+    /// Returns the width and height of the framebuffer.
+    pub fn dimensions(&self) -> (usize, usize) {
         (self.width, self.height)
     }
 
-    /// Composites `src` to the buffer starting from `index`.
-    pub fn composite_buffer(&mut self, src: &[P], index: usize) {
-        let len = src.len();
-        let dest_end = index + len;
-        Pixel::composite_buffer(src, &mut self.buffer_mut()[index..dest_end]);
-    }
-
-    /// Draw a pixel at the given coordinate. 
-    /// The `pixel` will be blended with the existing pixel value
-    /// at that `coordinate` in this framebuffer.
-    pub fn draw_pixel(&mut self, coordinate: Coord, pixel: P) {
-        if let Some(index) = self.index_of(coordinate) {
+    /// Draws a pixel at the specified coordinate, blending it with the existing pixel.
+    pub fn draw_pixel(&mut self, x: usize, y: usize, pixel: P) {
+        if x < self.width && y < self.height {
+            let index = y * self.width + x;
             self.buffer[index] = pixel.blend(self.buffer[index]);
         }
     }
 
-    /// Overwites a pixel at the given coordinate in this framebuffer
-    /// instead of blending it like [`draw_pixel`](#method.draw_pixel).
-    pub fn overwrite_pixel(&mut self, coordinate: Coord, pixel: P) {
-        self.draw_pixel(coordinate, pixel)
+    /// Overwrites a pixel at the specified coordinate without blending.
+    pub fn overwrite_pixel(&mut self, x: usize, y: usize, pixel: P) {
+        if x < self.width && y < self.height {
+            let index = y * self.width + x;
+            self.buffer[index] = pixel;
+        }
     }
 
-    /// Returns the pixel value at the given `coordinate` in this framebuffer.
-    pub fn get_pixel(&self, coordinate: Coord) -> Option<P> {
-        self.index_of(coordinate).map(|i| self.buffer[i])
-    }
-
-    /// Fills (overwrites) the entire framebuffer with the given `pixel` value.
+    /// Fills the entire framebuffer with the given pixel value.
     pub fn fill(&mut self, pixel: P) {
-        for p in self.buffer.deref_mut() {
+        for p in self.buffer.iter_mut() {
             *p = pixel;
         }
     }
-
-    /// Returns the index of the given `coordinate` in this framebuffer,
-    /// if this framebuffer [`contains`](#method.contains) the `coordinate` within its bounds.
-    pub fn index_of(&self, coordinate: Coord) -> Option<usize> {
-        if self.contains(coordinate) {
-            Some((self.width * coordinate.y as usize) + coordinate.x as usize)
-        } else {
-            None
-        }
-    }
-
-    /// Checks if the given `coordinate` is within the framebuffer's bounds.
-    /// The `coordinate` is relative to the origin coordinate of `(0, 0)` being the top-left point of the framebuffer.
-    pub fn contains(&self, coordinate: Coord) -> bool {
-        coordinate.x >= 0
-            && coordinate.x < (self.width as isize)
-            && coordinate.y >= 0
-            && coordinate.y < (self.height as isize)
-    }
-
-    /// Checks if a framebuffer overlaps with an area.
-    /// # Arguments
-    /// * `coordinate`: the top-left corner of the area relative to the origin(top-left point) of the framebuffer.
-    /// * `width`: the width of the area in number of pixels.
-    /// * `height`: the height of the area in number of pixels.
-    pub fn overlaps_with(&mut self, coordinate: Coord, width: usize, height: usize) -> bool {
-        coordinate.x < self.width as isize
-            && coordinate.x + width as isize >= 0
-            && coordinate.y < self.height as isize
-            && coordinate.y + height as isize >= 0
-    }
-
 }

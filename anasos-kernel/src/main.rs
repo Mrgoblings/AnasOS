@@ -5,18 +5,13 @@ extern crate alloc;
 use core::panic::PanicInfo;
 
 use anasos_kernel::{
-    allocator, framebuffer, hlt, init, memory::{
-        self,
-        memory_map::{FromMemoryMapTag, MemoryMap},
-        BootInfoFrameAllocator,
-    }, println, serial_println, task::{executor::Executor, keyboard, Task}
+    allocator, framebuffer, framebuffer_theseus::{self, color, pixel::{AlphaPixel, Pixel, RGBPixel}, Framebuffer}, hlt, init, memory::{
+        self, create_example_mapping, memory_map::{FromMemoryMapTag, MemoryMap}, BootInfoFrameAllocator
+    }, println, serial_println, task::{executor::Executor, keyboard, Task},
+    framebuffer_off
 };
-use x86_64::{structures::paging::{frame, Mapper, Page, PageTableFlags, Size4KiB}, VirtAddr};
+use x86_64::{structures::paging::{frame, Translate}, PhysAddr, VirtAddr};
 
-use x86_64::{
-    structures::paging::{PageTable, PhysFrame, Translate},
-    PhysAddr,
-};
 
 extern crate multiboot2;
 use multiboot2::{BootInformation, BootInformationHeader};
@@ -69,74 +64,95 @@ fn kernel_main(boot_info: &BootInformation) -> ! {
     println!("Kernel Start:");
     init();
 
+    // println!("boot_info start");
+    // println!("{:#?}", boot_info);
+    // println!("boot_info end");
+
+
+
+    // TODO: THIS is bulshit
     let phys_mem_offset = VirtAddr::new(boot_info.start_address() as u64);
     let mut mapper = unsafe { memory::init(phys_mem_offset) };
-    let memory_map: MemoryMap = MemoryMap::from_memory_map_tag(boot_info.memory_map_tag().unwrap());
-    let mut frame_allocator = unsafe { BootInfoFrameAllocator::init(&memory_map) };
-    allocator::init_heap(&mut mapper, &mut frame_allocator).expect("heap initialization failed");
+    let mut memory_map: MemoryMap = MemoryMap::from_memory_map_tag(boot_info.memory_map_tag().unwrap());
     
-    if let Some(framebuffer_tag_result) = boot_info.framebuffer_tag() {
-        if let Ok(framebuffer_tag) = framebuffer_tag_result {
-            framebuffer::map_framebuffer_page_table(&mut mapper, &mut frame_allocator, &framebuffer_tag);
-        } else {
-            panic!("Failed to get framebuffer tag");
-        }
+    let framebuffer_tag = boot_info.framebuffer_tag().unwrap().ok().ok_or("No framebuffer tag found").unwrap();
+    let framebuffer_phys_addr = PhysAddr::new(framebuffer_tag.address());
+    let framebuffer_start = framebuffer_tag.address() as u64;
+    let framebuffer_size = framebuffer_tag.pitch() as u64 * framebuffer_tag.height() as u64;
+    // let framebuffer_virt_addr = VirtAddr::new(0xFFFF8000_0000_0000); // Example virtual address
+    let framebuffer_width = framebuffer_tag.width() as u64;
+    let framebuffer_height = framebuffer_tag.height() as u64;
+
+    println!("Framebuffer width: {}, height: {}", framebuffer_width, framebuffer_height);
+
+    let mut frame_allocator = unsafe { BootInfoFrameAllocator::init(&mut memory_map, framebuffer_start, framebuffer_start + framebuffer_size) };
+    allocator::init_heap(&mut mapper, &mut frame_allocator).expect("Heap initialization failed");
+    //framebuffer::init(&framebuffer_tag, &mut mapper, &mut frame_allocator);
+    
+    
+    // framebuffer::map_framebuffer(
+    //     framebuffer_phys_addr,
+    //     framebuffer_size,
+    //     framebuffer_virt_addr,
+    //     &mut mapper,
+    //     &mut frame_allocator,
+    // ).expect("Failed to map framebuffer");
+
+    // Initialize the framebuffer
+    let mut framebuffer: Framebuffer<AlphaPixel> = Framebuffer::new(
+        framebuffer_tag.width() as usize,
+        framebuffer_tag.height() as usize,
+        Some(framebuffer_phys_addr),
+        &mut mapper,
+        &mut frame_allocator,
+    )
+    .expect("Failed to initialize framebuffer");
+
+    if is_identity_mapped(VirtAddr::new(framebuffer_phys_addr.as_u64()), &mapper) {
+        println!("Framebuffer identity mapped to address: {:?}", framebuffer_phys_addr.as_u64());
     } else {
-        panic!("No framebuffer tag found");
+        println!("Framebuffer not identity mapped");
     }
 
-    if let Some(Ok(framebuffer_tag)) = boot_info.framebuffer_tag() {
-        let addr = framebuffer_tag.address() as *mut u32;
-        let width = framebuffer_tag.width();
-        let height = framebuffer_tag.height();
-        let bpp = framebuffer_tag.bpp();
+    println!("Framebuffer identity mapped to address: {:?}", framebuffer.buffer_mut().as_ptr());
+    
+    println!(
+        "Framebuffer info: width = {}, height = {}",
+        framebuffer_width, framebuffer_height
+    );
 
-        println!(
-            "Framebuffer from address: {:#x} to address: {:#x}",
-            addr as u64,
-            (addr as u64) + (width * height * (bpp as u32) / 8) as u64
-        );
-
-        // check if address is identity mapped
-        if is_identity_mapped(VirtAddr::new(addr as u64), &mapper) {
-            println!("Framebuffer address is identity mapped");
-        } else {
-            println!("Framebuffer address is not identity mapped");
-        }
-
-        if bpp == 32 {
-            let pitch = framebuffer_tag.pitch();
-            make_screen_green(addr, width, height, pitch, bpp);
-
-            // unsafe {
-            //     println!("Pixel value before: {:#x}", *addr);
-            //     *addr = 0x00FF00; // Set to green
-            //     println!("Pixel value after: {:#x}", *addr);
-            // }
-        } else {
-            println!("Unsupported bits per pixel: {}", bpp);
-        }
-
-        println!(
-            "Framebuffer at: {:#x}, {}x{} ({} bpp)",
-            addr as u64, width, height, bpp
-        );
-    } else {
-        println!("No framebuffer tag found");
-    }
+    // framebuffer::map_framebuffer_page_table(&mut mapper, &mut frame_allocator, framebuffer_tag);
+    // framebuffer::check_framebuffer_mapping(&mapper, framebuffer_tag);
 
     // unsafe {
-    //     core::arch::asm!(
-    //         "mov eax, 0x00FF00",     // Green color
-    //         "mov [0xFD000000], eax", // Write to framebuffer address
-    //     );
+    //     println!("Pixel value before: {:#x}", *(framebuffer_virt_addr.as_mut_ptr::<u32>()));
+    //     *(framebuffer_virt_addr.as_mut_ptr::<u32>()) = 0x00FF00; // Set to green
+    //     println!("Pixel value after: {:#x}", *(framebuffer_virt_addr.as_mut_ptr::<u32>()));
     // }
+
+
+    // Fill the screen with green
+    let green_pixel: AlphaPixel = color::GREEN.into();
+    framebuffer.overwrite_pixel(3, 3, green_pixel);
+    // framebuffer.fill(green_pixel);
+
+    // println!("Screen filled with green color.");
+
+
+// unsafe {
+//     core::arch::asm!(
+//         "mov eax, 0x00FF00",     // Green color
+//         "mov [0xFD000000], eax", // Write to framebuffer address
+//     );
+// }
+
 
     let mut executor = Executor::new();
     executor.spawn(Task::new(example_task()));
     executor.spawn(Task::new(keyboard::print_keypresses()));
     executor.run(); // This function will never return
 }
+
 
 fn test_kernel_main(_boot_info: &BootInformation) -> ! {
     println!("Running tests");
@@ -156,25 +172,25 @@ async fn example_task() {
     println!("async number: {}", number);
 }
 
-fn make_screen_green(framebuffer: *mut u32, width: u32, height: u32, pitch: u32, bpp: u8) {
-    let green_color: u32 = 0x00FF0000; // Green in 32-bit ARGB
+// fn make_screen_green(framebuffer: *mut u32, width: u32, height: u32, pitch: u32, bpp: u8) {
+//     let green_color: u32 = 0x00FF0000; // Green in 32-bit ARGB
 
-    unsafe {
-        for y in 0..height {
-            for x in 0..width {
-                println!("x: {}, y: {}", x, y);
-                let pixel_offset: u32 = (y * pitch + x * ((bpp as u32) / 8)).into();
-                println!("pixel_offset: {}", pixel_offset);
-                let pixel_ptr = framebuffer.add(pixel_offset as usize);
-                println!("pixel_ptr: {:?}", pixel_ptr);
-                println!("pixel_ptr value: {:?}", *pixel_ptr);
+//     unsafe {
+//         for y in 0..height {
+//             for x in 0..width {
+//                 println!("x: {}, y: {}", x, y);
+//                 let pixel_offset: u32 = (y * pitch + x * ((bpp as u32) / 8)).into();
+//                 println!("pixel_offset: {}", pixel_offset);
+//                 let pixel_ptr = framebuffer.add(pixel_offset as usize);
+//                 println!("pixel_ptr: {:?}", pixel_ptr);
+//                 println!("pixel_ptr value: {:?}", *pixel_ptr);
 
-                *pixel_ptr = green_color;
-                println!("After pixel_ptr value: {:?}", *pixel_ptr);
-            }
-        }
-    }
-}
+//                 *pixel_ptr = green_color;
+//                 println!("After pixel_ptr value: {:?}", *pixel_ptr);
+//             }
+//         }
+//     }
+// }
 
 fn is_identity_mapped(virtual_address: VirtAddr, mapper: &impl Translate) -> bool {
     if let Some(physical_address) = mapper.translate_addr(virtual_address) {
