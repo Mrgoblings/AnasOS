@@ -4,7 +4,7 @@ use memory_map::{MemoryMap, MemoryRegionType};
 
 use x86_64::{
     structures::paging::{
-        FrameAllocator, Mapper, OffsetPageTable, Page, PageSize, PageTable, PageTableFlags, PhysFrame, Size4KiB
+        FrameAllocator, Mapper, OffsetPageTable, Page, PageSize, PageTable, PageTableFlags, PhysFrame, Size4KiB, Translate
     },
     PhysAddr, VirtAddr,
 };
@@ -120,5 +120,16 @@ unsafe impl<'a> FrameAllocator<Size4KiB> for BootInfoFrameAllocator<'a> {
         let frame = self.usable_frames().nth(self.next);
         self.next += 1;
         frame
+    }
+}
+
+
+pub fn is_identity_mapped(virtual_address: VirtAddr, mapper: &impl Translate) -> bool {
+    if let Some(physical_address) = mapper.translate_addr(virtual_address) {
+        // Compare physical and virtual addresses
+        physical_address.as_u64() == virtual_address.as_u64()
+    } else {
+        // Address is not mapped at all
+        false
     }
 }

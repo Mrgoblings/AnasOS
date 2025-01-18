@@ -18,6 +18,7 @@ pub mod serial;
 pub mod framebuffer;
 pub mod framebuffer_theseus;
 pub mod framebuffer_off;
+pub mod pci_controller;
 
 extern crate multiboot2;
 // use multiboot2::BootInformation;

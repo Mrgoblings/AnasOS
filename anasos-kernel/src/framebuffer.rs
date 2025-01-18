@@ -108,7 +108,7 @@ pub fn map_framebuffer(
 
     while current_page <= framebuffer_end_page {
         let frame = PhysFrame::containing_address(framebuffer_phys_addr + (current_page.start_address().as_u64() - framebuffer_virt_addr.as_u64()));
-        let flags = PageTableFlags::PRESENT | PageTableFlags::WRITABLE;
+        let flags = PageTableFlags::PRESENT | PageTableFlags::WRITABLE | PageTableFlags::NO_CACHE;
 
         unsafe {
             mapper.map_to(current_page, frame, flags, frame_allocator)

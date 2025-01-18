@@ -5,10 +5,9 @@ extern crate alloc;
 use core::panic::PanicInfo;
 
 use anasos_kernel::{
-    allocator, framebuffer, framebuffer_theseus::{self, color, pixel::{AlphaPixel, Pixel, RGBPixel}, Framebuffer}, hlt, init, memory::{
-        self, create_example_mapping, memory_map::{FromMemoryMapTag, MemoryMap}, BootInfoFrameAllocator
-    }, println, serial_println, task::{executor::Executor, keyboard, Task},
-    framebuffer_off
+    allocator, framebuffer, framebuffer_off, framebuffer_theseus::{self, color, pixel::{AlphaPixel, Pixel, RGBPixel}, Framebuffer}, hlt, init, memory::{
+        self, create_example_mapping, is_identity_mapped, memory_map::{FrameRange, FromMemoryMapTag, MemoryMap, MemoryRegion, MemoryRegionType}, BootInfoFrameAllocator
+    }, pci_controller::{self, enumerate_pci_devices, print_pci_devices}, println, serial_println, task::{executor::Executor, keyboard, Task}
 };
 use embedded_graphics::{mono_font::{ascii::FONT_6X9, MonoTextStyleBuilder}, pixelcolor::Rgb888, prelude::*, primitives::{Circle, PrimitiveStyleBuilder}, text::Text};
 use x86_64::{structures::paging::{frame, Translate}, PhysAddr, VirtAddr};
@@ -63,6 +62,23 @@ fn panic(info: &PanicInfo) -> ! {
 
 fn kernel_main(boot_info: &BootInformation) -> ! {
     println!("Kernel Start:");
+    //  // Check MMIO status for the framebuffer
+    //  let pci_bus = 0; // Replace with your framebuffer's bus number
+    //  let pci_slot = 2; // Replace with your framebuffer's slot number
+    //  let pci_function = 0; // Replace with your framebuffer's function number
+ 
+    //  let command_register = read_pci_register(pci_bus, pci_slot, pci_function, 0x04);
+    //  println!("PCI command register: {:#b}", command_register);
+    //  if (command_register & (1 << 1)) != 0 {
+    //      println!("MMIO is enabled for framebuffer.");
+    //  } else {
+    //      println!("MMIO is NOT enabled for framebuffer. Enabling it...");
+ 
+    //     //  let mut new_command = command_register | (1 << 1); // Enable MMIO
+    //     //  write_pci_register(pci_bus, pci_slot, pci_function, 0x04, new_command);
+    //     //  println!("MMIO enabled.");
+    //  }
+
     init();
 
     // println!("boot_info start");
@@ -72,7 +88,7 @@ fn kernel_main(boot_info: &BootInformation) -> ! {
 
 
     // TODO: THIS is bulshit
-    let phys_mem_offset = VirtAddr::new(boot_info.start_address() as u64);
+    let phys_mem_offset = VirtAddr::new(boot_info.end_address() as u64);
     let mut mapper = unsafe { memory::init(phys_mem_offset) };
     let mut memory_map: MemoryMap = MemoryMap::from_memory_map_tag(boot_info.memory_map_tag().unwrap());
     
@@ -83,11 +99,34 @@ fn kernel_main(boot_info: &BootInformation) -> ! {
     // let framebuffer_virt_addr = VirtAddr::new(0xFFFF8000_0000_0000); // Example virtual address
     let framebuffer_width = framebuffer_tag.width() as u64;
     let framebuffer_height = framebuffer_tag.height() as u64;
-
-    println!("Framebuffer width: {}, height: {}", framebuffer_width, framebuffer_height);
+    
+    // reserve framebuffer memory
+    memory_map.add_region(MemoryRegion {
+        range: FrameRange::new(framebuffer_start, framebuffer_start + framebuffer_size),
+        region_type: MemoryRegionType::Reserved,
+    });
 
     let mut frame_allocator = unsafe { BootInfoFrameAllocator::init(&mut memory_map, framebuffer_start, framebuffer_start + framebuffer_size) };
     allocator::init_heap(&mut mapper, &mut frame_allocator).expect("Heap initialization failed");
+
+    // VALID HEAP ALLOCATION STARTS HERE
+    
+    let devices = enumerate_pci_devices();
+    print_pci_devices(&devices);
+
+    for device in &devices {
+        if device.device_id() == 0x1111 && device.vendor_id() == 0x1234 {
+            let bar0 = device.read_bar(0);
+            println!("VGA BAR0: {:#X}", bar0);
+        }
+    }
+
+    println!("\n");
+    println!("Framebuffer width: {}, height: {}", framebuffer_width, framebuffer_height);
+    
+    
+
+
     
     framebuffer::map_framebuffer(framebuffer_phys_addr, framebuffer_size, VirtAddr::new(framebuffer_phys_addr.as_u64()), &mut mapper, &mut frame_allocator).expect("Framebuffer mapping failed");
     framebuffer::check_framebuffer_mapping(&mut mapper, framebuffer_tag);
@@ -164,15 +203,25 @@ async fn example_task() {
 }
 
 
-fn is_identity_mapped(virtual_address: VirtAddr, mapper: &impl Translate) -> bool {
-    if let Some(physical_address) = mapper.translate_addr(virtual_address) {
-        // Compare physical and virtual addresses
-        physical_address.as_u64() == virtual_address.as_u64()
-    } else {
-        // Address is not mapped at all
-        false
-    }
-}
+// fn enumerate_pci_devices() {
+//     for bus in 0..=255 {
+//         for device in 0..=31 {
+//             for function in 0..=7 {
+//                 let vendor_id = read_pci_register(bus, device, function, 0x00) & 0xFFFF;
+//                 if vendor_id != 0xFFFF {
+//                     let device_id = (read_pci_register(bus, device, function, 0x00) >> 16) & 0xFFFF;
+//                     println!(
+//                         "Found device: bus = {}, device = {}, function = {}, vendor = {:#X}, device = {:#X}",
+//                         bus, device, function, vendor_id, device_id
+//                     );
+//                 }
+//             }
+//         }
+//     }
+// }
+
+
+
 
 
 // fn make_screen_green(framebuffer: *mut u32, width: u32, height: u32, pitch: u32, bpp: u8) {

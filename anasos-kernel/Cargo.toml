@@ -39,4 +39,3 @@ features = ["alloc"]
 
 [build-dependencies]
 llvm-tools = "0.1"
-toml = "0.5.1"
