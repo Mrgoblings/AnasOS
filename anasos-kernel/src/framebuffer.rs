@@ -99,6 +99,11 @@ pub fn map_framebuffer(
     mapper: &mut OffsetPageTable,
     frame_allocator: &mut BootInfoFrameAllocator,
 ) -> Result<(), &'static str> {
+    if framebuffer_phys_addr.as_u64() % 4096 != 0 || framebuffer_virt_addr.as_u64() % 4096 != 0 {
+        panic!("Framebuffer addresses must be 4KiB aligned.");
+    }
+
+
     let framebuffer_start_page: Page<Size4KiB> = Page::containing_address(framebuffer_virt_addr);
     let framebuffer_end_page: Page<Size4KiB> = Page::containing_address(
         framebuffer_virt_addr + framebuffer_size as u64 - 1u64
@@ -108,7 +113,7 @@ pub fn map_framebuffer(
 
     while current_page <= framebuffer_end_page {
         let frame = PhysFrame::containing_address(framebuffer_phys_addr + (current_page.start_address().as_u64() - framebuffer_virt_addr.as_u64()));
-        let flags = PageTableFlags::PRESENT | PageTableFlags::WRITABLE | PageTableFlags::NO_CACHE;
+        let flags = PageTableFlags::PRESENT | PageTableFlags::WRITABLE | PageTableFlags::NO_CACHE | PageTableFlags::GLOBAL;
 
         unsafe {
             mapper.map_to(current_page, frame, flags, frame_allocator)

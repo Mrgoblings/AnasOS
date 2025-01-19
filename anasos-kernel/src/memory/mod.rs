@@ -72,27 +72,11 @@ impl<'a> BootInfoFrameAllocator<'a> {
     /// This function is unsafe because the caller must guarantee that the passed
     /// memory map is valid. The main requirement is that all frames that are marked
     /// as `USABLE` in it are really unused.
-    pub unsafe fn init(memory_map: &'a mut MemoryMap, framebuffer_start: u64, framebuffer_end: u64) -> Self {
+    pub unsafe fn init(memory_map: &'a mut MemoryMap) -> Self {
         let allocator = BootInfoFrameAllocator {
             memory_map,
             next: 0,
         };
-
-        allocator.memory_map.iter_mut().for_each(|entry| {
-            let entry_start = entry.range.start_addr();
-            let entry_end = entry.range.end_addr();
-    
-            // If this entry overlaps with the framebuffer, adjust it
-            if entry_start < framebuffer_end && entry_end > framebuffer_start {
-                if entry_start < framebuffer_start {
-                    entry.range.end_frame_number = framebuffer_start / Size4KiB::SIZE;
-                } else if entry_end > framebuffer_end {
-                    entry.range.start_frame_number = framebuffer_end / Size4KiB::SIZE;
-                } else {
-                    entry.region_type = MemoryRegionType::InUse;
-                }
-            }
-        });
 
         allocator
     }

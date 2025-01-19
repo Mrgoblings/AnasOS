@@ -5,13 +5,33 @@ extern crate alloc;
 use core::panic::PanicInfo;
 
 use anasos_kernel::{
-    allocator, framebuffer, framebuffer_off, framebuffer_theseus::{self, color, pixel::{AlphaPixel, Pixel, RGBPixel}, Framebuffer}, hlt, init, memory::{
-        self, create_example_mapping, is_identity_mapped, memory_map::{FrameRange, FromMemoryMapTag, MemoryMap, MemoryRegion, MemoryRegionType}, BootInfoFrameAllocator
-    }, pci_controller::{self, enumerate_pci_devices, print_pci_devices}, println, serial_println, task::{executor::Executor, keyboard, Task}
+    allocator, framebuffer, framebuffer_off,
+    framebuffer_theseus::{
+        self, color,
+        pixel::{AlphaPixel, Pixel, RGBPixel},
+        Framebuffer,
+    },
+    hlt, init,
+    memory::{
+        self, create_example_mapping, is_identity_mapped,
+        memory_map::{FrameRange, FromMemoryMapTag, MemoryMap, MemoryRegion, MemoryRegionType},
+        BootInfoFrameAllocator,
+    },
+    pci_controller::{self, enumerate_pci_devices, print_pci_devices},
+    println, serial_println,
+    task::{executor::Executor, keyboard, Task},
 };
-use embedded_graphics::{mono_font::{ascii::FONT_6X9, MonoTextStyleBuilder}, pixelcolor::Rgb888, prelude::*, primitives::{Circle, PrimitiveStyleBuilder}, text::Text};
-use x86_64::{structures::paging::{frame, Translate}, PhysAddr, VirtAddr};
-
+use embedded_graphics::{
+    mono_font::{ascii::FONT_6X9, MonoTextStyleBuilder},
+    pixelcolor::Rgb888,
+    prelude::*,
+    primitives::{Circle, PrimitiveStyleBuilder},
+    text::Text,
+};
+use x86_64::{
+    structures::paging::{frame, Translate},
+    PhysAddr, VirtAddr,
+};
 
 extern crate multiboot2;
 use multiboot2::{BootInformation, BootInformationHeader};
@@ -66,14 +86,14 @@ fn kernel_main(boot_info: &BootInformation) -> ! {
     //  let pci_bus = 0; // Replace with your framebuffer's bus number
     //  let pci_slot = 2; // Replace with your framebuffer's slot number
     //  let pci_function = 0; // Replace with your framebuffer's function number
- 
+
     //  let command_register = read_pci_register(pci_bus, pci_slot, pci_function, 0x04);
     //  println!("PCI command register: {:#b}", command_register);
     //  if (command_register & (1 << 1)) != 0 {
     //      println!("MMIO is enabled for framebuffer.");
     //  } else {
     //      println!("MMIO is NOT enabled for framebuffer. Enabling it...");
- 
+
     //     //  let mut new_command = command_register | (1 << 1); // Enable MMIO
     //     //  write_pci_register(pci_bus, pci_slot, pci_function, 0x04, new_command);
     //     //  println!("MMIO enabled.");
@@ -85,102 +105,118 @@ fn kernel_main(boot_info: &BootInformation) -> ! {
     // println!("{:#?}", boot_info);
     // println!("boot_info end");
 
-
-
     // TODO: THIS is bulshit
     let phys_mem_offset = VirtAddr::new(boot_info.end_address() as u64);
     let mut mapper = unsafe { memory::init(phys_mem_offset) };
-    let mut memory_map: MemoryMap = MemoryMap::from_memory_map_tag(boot_info.memory_map_tag().unwrap());
+    let mut memory_map: MemoryMap =
+        MemoryMap::from_memory_map_tag(boot_info.memory_map_tag().unwrap());
+
+    let framebuffer_tag = boot_info
+        .framebuffer_tag()
+        .unwrap()
+        .ok()
+        .ok_or("No framebuffer tag found")
+        .unwrap();
     
-    let framebuffer_tag = boot_info.framebuffer_tag().unwrap().ok().ok_or("No framebuffer tag found").unwrap();
     let framebuffer_phys_addr = PhysAddr::new(framebuffer_tag.address());
+    let framebuffer_virt_addr = VirtAddr::new(framebuffer_phys_addr.as_u64()); // Example virtual address
+    
     let framebuffer_start = framebuffer_tag.address() as u64;
     let framebuffer_size = framebuffer_tag.pitch() as u64 * framebuffer_tag.height() as u64;
-    // let framebuffer_virt_addr = VirtAddr::new(0xFFFF8000_0000_0000); // Example virtual address
     let framebuffer_width = framebuffer_tag.width() as u64;
     let framebuffer_height = framebuffer_tag.height() as u64;
-    
+
     // reserve framebuffer memory
     memory_map.add_region(MemoryRegion {
         range: FrameRange::new(framebuffer_start, framebuffer_start + framebuffer_size),
         region_type: MemoryRegionType::Reserved,
     });
 
-    let mut frame_allocator = unsafe { BootInfoFrameAllocator::init(&mut memory_map, framebuffer_start, framebuffer_start + framebuffer_size) };
+    let mut frame_allocator = unsafe { BootInfoFrameAllocator::init(&mut memory_map) };
     allocator::init_heap(&mut mapper, &mut frame_allocator).expect("Heap initialization failed");
 
     // VALID HEAP ALLOCATION STARTS HERE
-    
-    let devices = enumerate_pci_devices();
-    print_pci_devices(&devices);
 
-    for device in &devices {
-        if device.device_id() == 0x1111 && device.vendor_id() == 0x1234 {
-            let bar0 = device.read_bar(0);
-            println!("VGA BAR0: {:#X}", bar0);
-        }
+    {
+        // scope is needed to drop the mutable reference to the heap allocator
+        let devices = enumerate_pci_devices();
+        print_pci_devices(&devices);
     }
 
     println!("\n");
-    println!("Framebuffer width: {}, height: {}", framebuffer_width, framebuffer_height);
-    
-    
+    println!(
+        "Framebuffer width: {}, height: {}",
+        framebuffer_width, framebuffer_height
+    );
 
+    framebuffer::map_framebuffer(
+        framebuffer_phys_addr,
+        framebuffer_size,
+        VirtAddr::new(framebuffer_phys_addr.as_u64()),
+        &mut mapper,
+        &mut frame_allocator,
+    )
+    .expect("Framebuffer mapping failed");
 
-    
-    framebuffer::map_framebuffer(framebuffer_phys_addr, framebuffer_size, VirtAddr::new(framebuffer_phys_addr.as_u64()), &mut mapper, &mut frame_allocator).expect("Framebuffer mapping failed");
     framebuffer::check_framebuffer_mapping(&mut mapper, framebuffer_tag);
+    if is_identity_mapped(VirtAddr::new(framebuffer_phys_addr.as_u64()), &mapper) {
+        println!(
+            "Framebuffer identity mapped to address: {:x}",
+            framebuffer_phys_addr.as_u64()
+        );
+    } else {
+        println!("Framebuffer not identity mapped");
+    }
+    println!("");
 
+    unsafe {
+        println!("Pixel value before: {:#x}", *(framebuffer_virt_addr.as_mut_ptr::<u32>()));
+        *(framebuffer_virt_addr.as_mut_ptr::<u32>()) = 0x00FF00; // Set to green
+        println!("Pixel value after: {:#x}", *(framebuffer_virt_addr.as_mut_ptr::<u32>()));
+    }
 
     let mut framebuffer = framebuffer_off::Framebuffer::new(
         framebuffer_height as usize,
         framebuffer_width as usize,
-        unsafe { core::slice::from_raw_parts_mut(0xfd000000 as *mut u8, framebuffer_height as usize * framebuffer_width as usize * (framebuffer_tag.bpp() / 8) as usize) },
+        unsafe {
+            core::slice::from_raw_parts_mut(
+                0xfd000000 as *mut u8,
+                framebuffer_height as usize
+                    * framebuffer_width as usize
+                    * (framebuffer_tag.bpp() / 8) as usize,
+            )
+        },
     );
 
     // Draw a circle
     let style = PrimitiveStyleBuilder::new()
-    .stroke_color(Rgb888::RED)
-    .stroke_width(1)
-    .fill_color(Rgb888::GREEN)
-    .build();
+        .stroke_color(Rgb888::RED)
+        .stroke_width(1)
+        .fill_color(Rgb888::GREEN)
+        .build();
 
     Circle::new(Point::new(100, 100), 50)
-    .into_styled(style)
-    .draw(&mut framebuffer)
-    .unwrap();
-
+        .into_styled(style)
+        .draw(&mut framebuffer)
+        .unwrap();
 
     // Draw text
     let text_style = MonoTextStyleBuilder::new()
-    .font(&FONT_6X9)
-    .text_color(Rgb888::WHITE)
-    .build();
+        .font(&FONT_6X9)
+        .text_color(Rgb888::WHITE)
+        .build();
 
     Text::new("Hello, OS!", Point::new(10, 10), text_style)
-    .draw(&mut framebuffer)
-    .unwrap();
-
-    if is_identity_mapped(VirtAddr::new(framebuffer_phys_addr.as_u64()), &mapper) {
-        println!("Framebuffer identity mapped to address: {:?}", framebuffer_phys_addr.as_u64());
-    } else {
-        println!("Framebuffer not identity mapped");
-    }
+        .draw(&mut framebuffer)
+        .unwrap();
 
     // println!("Framebuffer identity mapped to address: {:?}", framebuffer.buffer_mut().as_ptr());
-    
-    println!(
-        "Framebuffer info: width = {}, height = {}",
-        framebuffer_width, framebuffer_height
-    );
-
 
     let mut executor = Executor::new();
     executor.spawn(Task::new(example_task()));
     executor.spawn(Task::new(keyboard::print_keypresses()));
     executor.run(); // This function will never return
 }
-
 
 fn test_kernel_main(_boot_info: &BootInformation) -> ! {
     println!("Running tests");
@@ -190,18 +226,15 @@ fn test_kernel_main(_boot_info: &BootInformation) -> ! {
     hlt();
 }
 
-
 // Test async functions
 async fn async_number() -> u32 {
     42
 }
 
-
 async fn example_task() {
     let number = async_number().await;
     println!("async number: {}", number);
 }
-
 
 // fn enumerate_pci_devices() {
 //     for bus in 0..=255 {
@@ -219,10 +252,6 @@ async fn example_task() {
 //         }
 //     }
 // }
-
-
-
-
 
 // fn make_screen_green(framebuffer: *mut u32, width: u32, height: u32, pitch: u32, bpp: u8) {
 //     let green_color: u32 = 0x00FF0000; // Green in 32-bit ARGB
@@ -244,37 +273,33 @@ async fn example_task() {
 //     }
 // }
 
+// framebuffer::map_framebuffer_page_table(&mut mapper, &mut frame_allocator, framebuffer_tag);
+// framebuffer::check_framebuffer_mapping(&mapper, framebuffer_tag);
 
-    // framebuffer::map_framebuffer_page_table(&mut mapper, &mut frame_allocator, framebuffer_tag);
-    // framebuffer::check_framebuffer_mapping(&mapper, framebuffer_tag);
+// unsafe {
+//     println!("Pixel value before: {:#x}", *(framebuffer_virt_addr.as_mut_ptr::<u32>()));
+//     *(framebuffer_virt_addr.as_mut_ptr::<u32>()) = 0x00FF00; // Set to green
+//     println!("Pixel value after: {:#x}", *(framebuffer_virt_addr.as_mut_ptr::<u32>()));
+// }
 
-    // unsafe {
-    //     println!("Pixel value before: {:#x}", *(framebuffer_virt_addr.as_mut_ptr::<u32>()));
-    //     *(framebuffer_virt_addr.as_mut_ptr::<u32>()) = 0x00FF00; // Set to green
-    //     println!("Pixel value after: {:#x}", *(framebuffer_virt_addr.as_mut_ptr::<u32>()));
-    // }
+//framebuffer::init(&framebuffer_tag, &mut mapper, &mut frame_allocator);
 
-    //framebuffer::init(&framebuffer_tag, &mut mapper, &mut frame_allocator);
-    
+// Initialize the framebuffer
+// let mut framebuffer: Framebuffer<AlphaPixel> = Framebuffer::new(
+//     framebuffer_tag.width() as usize,
+//     framebuffer_tag.height() as usize,
+//     Some(framebuffer_phys_addr),
+//     &mut mapper,
+//     &mut frame_allocator,
+// )
+// .expect("Failed to initialize framebuffer");
 
-    // Initialize the framebuffer
-    // let mut framebuffer: Framebuffer<AlphaPixel> = Framebuffer::new(
-    //     framebuffer_tag.width() as usize,
-    //     framebuffer_tag.height() as usize,
-    //     Some(framebuffer_phys_addr),
-    //     &mut mapper,
-    //     &mut frame_allocator,
-    // )
-    // .expect("Failed to initialize framebuffer");
+// Fill the screen with green
+// let green_pixel: AlphaPixel = color::GREEN.into();
+// framebuffer.overwrite_pixel(3, 3, green_pixel);
+// framebuffer.fill(green_pixel);
 
-
-    // Fill the screen with green
-    // let green_pixel: AlphaPixel = color::GREEN.into();
-    // framebuffer.overwrite_pixel(3, 3, green_pixel);
-    // framebuffer.fill(green_pixel);
-
-    // println!("Screen filled with green color.");
-
+// println!("Screen filled with green color.");
 
 // unsafe {
 //     core::arch::asm!(
