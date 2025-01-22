@@ -105,8 +105,26 @@ fn kernel_main(boot_info: &BootInformation) -> ! {
     // println!("{:#?}", boot_info);
     // println!("boot_info end");
 
-    // TODO: THIS is bulshit
-    let phys_mem_offset = VirtAddr::new(boot_info.end_address() as u64);
+    let kernel_start = boot_info
+        .elf_sections_tag()
+        .ok_or("Elf section tag not parsed")
+        .unwrap()
+        .sections()
+        .map(|s| s.start_address())
+        .min()
+        .unwrap();
+    let kernel_end = boot_info
+        .elf_sections_tag()
+        .ok_or("Elf section tag not parsed")
+        .unwrap()
+        .sections()
+        .map(|s| s.start_address() + s.size())
+        .max()
+        .unwrap();
+
+    println!("Kernel start: {:#x}, end: {:#x}", kernel_start, kernel_end);
+
+    let phys_mem_offset = VirtAddr::new(kernel_start as u64);
     let mut mapper = unsafe { memory::init(phys_mem_offset) };
     let mut memory_map: MemoryMap =
         MemoryMap::from_memory_map_tag(boot_info.memory_map_tag().unwrap());

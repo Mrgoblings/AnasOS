@@ -1,26 +1,36 @@
-# Memory settings
-megs: 8 
+# Bochs Configuration File
 
-# Paths to BIOS and VGA ROMs
-romimage: file=/usr/local/share/bochs/BIOS-bochs-latest
-vgaromimage: file=/usr/local/share/bochs/VGABIOS-lgpl-latest
+# CPU configuration
+cpu: count=1, model=bx_generic, ips=1000000
 
-# Configure the disk image (your ISO)
-ata0-master: type=disk, path="AnasOS.iso", mode=flat
+# Memory configuration
+megs: 512
 
-# Boot from the CD-ROM
+# Debugging options
+display_library: x, options="gui_debug"
+log: bochs.log
+magic_break: enabled=1
+mouse: enabled=1
+
+# Boot options
 boot: disk
 
-# Sync the clock and disable the mouse
-# clock: sync=realtime
-# mouse: enabled=0
+# Disk setup
+ata0-master: type=disk, path="AnasOS.iso", mode=flat, cylinders=0, heads=0, spt=0
 
-# Display library (enable SDL2 if available)
-display_library: sdl2, options="gui_debug"
+# GRUB can handle modern BIOS extensions, so make sure these are enabled
+ata0-slave: type=none
+ata1-master: type=none
+ata1-slave: type=none
 
-# Enable serial output to the terminal
-com1: enabled=1, mode=stdio
+# VGA display
+vga: extension=vbe
 
-# Logging configuration
-log: bochs.log
-debugger_log: bochs-debug.log
+# Debugger settings
+debugger_log: debugger.log
+
+# PCI support
+pci: enabled=1, chipset=i440fx
+
+# Serial port configuration
+com1: enabled=1, mode=file, dev="serial.log"
