@@ -1,0 +1,10 @@
+megs: 8  # Set RAM size in MB
+romimage: file=/usr/local/share/bochs/BIOS-bochs-latest
+vgaromimage: file=/usr/local/share/bochs/VGABIOS-lgpl-latest
+ata0-master: type=disk, path="AnasOS.iso", mode=flat
+boot: disk
+log: bochs.log
+clock: sync=realtime
+display_library: sdl2, options="gui_debug"
+mouse: enabled=0
+debugger_log: bochs-debug.log

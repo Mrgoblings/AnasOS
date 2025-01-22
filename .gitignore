@@ -8,3 +8,5 @@ serial.log
 *.o
 *.elf
 *.iso
+*.log
+*.ini
