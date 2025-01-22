@@ -1,10 +1,26 @@
-megs: 8  # Set RAM size in MB
+# Memory settings
+megs: 8 
+
+# Paths to BIOS and VGA ROMs
 romimage: file=/usr/local/share/bochs/BIOS-bochs-latest
 vgaromimage: file=/usr/local/share/bochs/VGABIOS-lgpl-latest
+
+# Configure the disk image (your ISO)
 ata0-master: type=disk, path="AnasOS.iso", mode=flat
+
+# Boot from the CD-ROM
 boot: disk
-log: bochs.log
-clock: sync=realtime
+
+# Sync the clock and disable the mouse
+# clock: sync=realtime
+# mouse: enabled=0
+
+# Display library (enable SDL2 if available)
 display_library: sdl2, options="gui_debug"
-mouse: enabled=0
+
+# Enable serial output to the terminal
+com1: enabled=1, mode=stdio
+
+# Logging configuration
+log: bochs.log
 debugger_log: bochs-debug.log
