@@ -97,7 +97,7 @@ setup_page_tables:
     MOV [PDPT], eax
 
     ; Initialize the level 2 page table (PD) with three PDEs
-    MOV edi, 5                ; Set number of Level 1 page tables each by 2 MiB
+    MOV edi, 64                ; Set number of Level 1 page tables each by 2 MiB
     XOR ecx, ecx              ; Loop counter
 .fill_loop:
     MOV eax, PT               ; First page table
@@ -209,7 +209,7 @@ PDPT:
 PD:
     RESB 4096                ; Level 2 Page Table
 PT:
-    RESB 4096 * 5            ; Three Level 1 Page Tables (512 entries each)
+    RESB 4096 * 64            ; Level 1 Page Tables (512 entries each)
 end_page_table:
 stack_bottom:
     RESB 4096 * 5 ; bytes reserved for stack (5 pages)

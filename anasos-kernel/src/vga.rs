@@ -244,6 +244,6 @@ pub fn _print(args: fmt::Arguments) {
     use x86_64::instructions::interrupts;
     interrupts::without_interrupts(|| {
         WRITER.lock().write_fmt(args).unwrap();
+        serial::_print(args);
     });
-    serial::_print(args);
 }

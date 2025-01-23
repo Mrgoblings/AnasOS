@@ -6,18 +6,18 @@ use core::panic::PanicInfo;
 
 use anasos_kernel::{
     allocator, framebuffer, framebuffer_off,
-    framebuffer_theseus::{
-        self, color,
-        pixel::{AlphaPixel, Pixel, RGBPixel},
-        Framebuffer,
-    },
+    // framebuffer_theseus::{
+    //     self, color,
+    //     pixel::{AlphaPixel, Pixel, RGBPixel},
+    //     Framebuffer,
+    // },
     hlt, init,
     memory::{
         self, create_example_mapping, is_identity_mapped,
         memory_map::{FrameRange, FromMemoryMapTag, MemoryMap, MemoryRegion, MemoryRegionType},
         BootInfoFrameAllocator,
     },
-    pci_controller::{self, enumerate_pci_devices, print_pci_devices},
+    // pci_controller::{self, enumerate_pci_devices, print_pci_devices},
     println, serial_println,
     task::{executor::Executor, keyboard, Task},
 };
@@ -29,7 +29,7 @@ use embedded_graphics::{
     text::Text,
 };
 use x86_64::{
-    structures::paging::{frame, Translate},
+    // structures::paging::{frame, Translate},
     PhysAddr, VirtAddr,
 };
 
@@ -105,27 +105,13 @@ fn kernel_main(boot_info: &BootInformation) -> ! {
     // println!("{:#?}", boot_info);
     // println!("boot_info end");
 
-    let kernel_start = boot_info
-        .elf_sections_tag()
-        .ok_or("Elf section tag not parsed")
-        .unwrap()
-        .sections()
-        .map(|s| s.start_address())
-        .min()
-        .unwrap();
-    let kernel_end = boot_info
-        .elf_sections_tag()
-        .ok_or("Elf section tag not parsed")
-        .unwrap()
-        .sections()
-        .map(|s| s.start_address() + s.size())
-        .max()
-        .unwrap();
+    
+    let phys_mem_offset = VirtAddr::new(boot_info.end_address() as u64);
+    // let phys_mem_offset = VirtAddr::new(kernel_start as u64);
+    println!("Physical memory offset: {:?}", phys_mem_offset);
 
-    println!("Kernel start: {:#x}, end: {:#x}", kernel_start, kernel_end);
-
-    let phys_mem_offset = VirtAddr::new(kernel_start as u64);
     let mut mapper = unsafe { memory::init(phys_mem_offset) };
+    // println!("Mapper : {:#?}", mapper);
     let mut memory_map: MemoryMap =
         MemoryMap::from_memory_map_tag(boot_info.memory_map_tag().unwrap());
 
@@ -137,12 +123,19 @@ fn kernel_main(boot_info: &BootInformation) -> ! {
         .unwrap();
     
     let framebuffer_phys_addr = PhysAddr::new(framebuffer_tag.address());
+    println!("Framebuffer physical address: {:?}", framebuffer_phys_addr);
     let framebuffer_virt_addr = VirtAddr::new(framebuffer_phys_addr.as_u64()); // Example virtual address
     
     let framebuffer_start = framebuffer_tag.address() as u64;
     let framebuffer_size = framebuffer_tag.pitch() as u64 * framebuffer_tag.height() as u64;
     let framebuffer_width = framebuffer_tag.width() as u64;
     let framebuffer_height = framebuffer_tag.height() as u64;
+    
+    println!("Framebuffer start: {:#x}", framebuffer_start);
+    println!("Framebuffer size: {}", framebuffer_size);
+    println!("Framebuffer width: {}", framebuffer_width);
+    println!("Framebuffer end: {:#x}", framebuffer_start + framebuffer_size);
+    println!("Framebuffer height: {}", framebuffer_height);
 
     // reserve framebuffer memory
     memory_map.add_region(MemoryRegion {
@@ -150,22 +143,42 @@ fn kernel_main(boot_info: &BootInformation) -> ! {
         region_type: MemoryRegionType::Reserved,
     });
 
+
+    // Calculate total pages usable
+    let total_pages: u64 = memory_map.iter()
+    .filter(|region| region.region_type == MemoryRegionType::Usable)
+    .map(|region| {
+        let start = region.range.start_addr();
+        let end = region.range.end_addr();
+        (end - start) / 4096 // 4 KiB page size
+    })
+    .sum();
+
+    println!("Total pages required: {}", total_pages);
+
+
     let mut frame_allocator = unsafe { BootInfoFrameAllocator::init(&mut memory_map) };
     allocator::init_heap(&mut mapper, &mut frame_allocator).expect("Heap initialization failed");
-
+    println!("Heap initialized");
     // VALID HEAP ALLOCATION STARTS HERE
 
-    {
-        // scope is needed to drop the mutable reference to the heap allocator
-        let devices = enumerate_pci_devices();
-        print_pci_devices(&devices);
-    }
 
-    println!("\n");
+
+    // {
+    //     // scope is needed to drop the mutable reference to the heap allocator
+    //     let devices = enumerate_pci_devices();
+    //     print_pci_devices(&devices);
+    // }
+    // println!("PCI devices enumerated {:#?}", framebuffer_tag);
+
+
+    println!("");
     println!(
         "Framebuffer width: {}, height: {}",
         framebuffer_width, framebuffer_height
     );
+
+    println!("");
 
     framebuffer::map_framebuffer(
         framebuffer_phys_addr,
@@ -175,6 +188,8 @@ fn kernel_main(boot_info: &BootInformation) -> ! {
         &mut frame_allocator,
     )
     .expect("Framebuffer mapping failed");
+
+    println!("Framebuffer mapped");
 
     framebuffer::check_framebuffer_mapping(&mut mapper, framebuffer_tag);
     if is_identity_mapped(VirtAddr::new(framebuffer_phys_addr.as_u64()), &mapper) {
