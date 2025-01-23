@@ -36,6 +36,7 @@ run-vnc:
 
 debug:
 	bochs -f bochsrc.txt -q
+	cat serial.log
 
 clean:
 	-@cd ./anasos-kernel && cargo clean > /dev/null 2>&1
