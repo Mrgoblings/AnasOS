@@ -1,10 +1,14 @@
 # Bochs Configuration File
 
+# Path to the kernel
+# symbol: AnasOS/boot/kernel
+gdbstub: enabled=1, port=1234
+
 # CPU configuration
 cpu: count=1, model=bx_generic, ips=1000000
 
 # Memory configuration
-megs: 512
+megs: 2048
 
 # Debugging options
 display_library: x, options="gui_debug"

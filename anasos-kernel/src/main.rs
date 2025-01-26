@@ -30,7 +30,7 @@ use embedded_graphics::{
 };
 use x86_64::{
     // structures::paging::{frame, Translate},
-    PhysAddr, VirtAddr,
+    structures::paging::Translate, PhysAddr, VirtAddr
 };
 
 extern crate multiboot2;
@@ -47,7 +47,7 @@ pub extern "C" fn _start(mb_magic: u32, mbi_ptr: u32) -> ! {
     let _cmd = boot_info.command_line_tag();
 
     if let Some(bootloader_name) = boot_info.boot_loader_name_tag() {
-        println!("Bootloader: {:?}", bootloader_name.name());
+        println!("Bootloader: {:?}", bootloader_name.name().ok());
     }
 
     // Access the memory map
@@ -202,8 +202,16 @@ fn kernel_main(boot_info: &BootInformation) -> ! {
     }
     println!("");
 
+    let virt_addr = VirtAddr::new(0xfd000000);
+    if let Some(phys_addr) = mapper.translate_addr(virt_addr) {
+        println!("Address {:#x} maps to physical address {:#x}", virt_addr.as_u64(), phys_addr.as_u64());
+    } else {
+        println!("Address {:#x} is not mapped", virt_addr.as_u64());
+    }
+
     unsafe {
-        println!("Pixel value before: {:#x}", *(framebuffer_virt_addr.as_mut_ptr::<u32>()));
+        println!("Pixel value before: {:#x}", read_from_mmio(framebuffer_virt_addr.as_u64()));
+        // write_to_mmio(mmio_address, 0x12345678);
         *(framebuffer_virt_addr.as_mut_ptr::<u32>()) = 0x00FF00; // Set to green
         println!("Pixel value after: {:#x}", *(framebuffer_virt_addr.as_mut_ptr::<u32>()));
     }
@@ -340,3 +348,16 @@ async fn example_task() {
 //         "mov [0xFD000000], eax", // Write to framebuffer address
 //     );
 // }
+
+
+use core::ptr;
+
+pub fn write_to_mmio(addr: u64, value: u32) {
+    unsafe {
+        ptr::write_volatile(addr as *mut u32, value);
+    }
+}
+
+pub fn read_from_mmio(addr: u64) -> u32 {
+    unsafe { ptr::read_volatile(addr as *const u32) }
+}

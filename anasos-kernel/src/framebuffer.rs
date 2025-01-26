@@ -113,13 +113,15 @@ pub fn map_framebuffer(
 
     while current_page <= framebuffer_end_page {
         let frame = PhysFrame::containing_address(framebuffer_phys_addr + (current_page.start_address().as_u64() - framebuffer_virt_addr.as_u64()));
-        let flags = PageTableFlags::PRESENT | PageTableFlags::WRITABLE | PageTableFlags::NO_CACHE | PageTableFlags::GLOBAL;
+        let flags = PageTableFlags::PRESENT | PageTableFlags::WRITABLE | PageTableFlags::NO_CACHE | PageTableFlags::NO_EXECUTE;
 
         unsafe {
             mapper.map_to(current_page, frame, flags, frame_allocator)
                   .expect("Frame allocation failed in map_framebuffer")
                   .flush();
         }
+
+        println!("Mapped page: {:#x} -> {:#x}", current_page.start_address().as_u64(), frame.start_address().as_u64());
 
         current_page += 1;
     }

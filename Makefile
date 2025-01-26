@@ -39,6 +39,6 @@ debug:
 	cat serial.log
 
 clean:
-	-@cd ./anasos-kernel && cargo clean > /dev/null 2>&1
+	# -@cd ./anasos-kernel && cargo clean > /dev/null 2>&1
 	-@rm AnasOS/boot/kernel > /dev/null 2>&1
 	-@rm AnasOS.iso > /dev/null 2>&1
