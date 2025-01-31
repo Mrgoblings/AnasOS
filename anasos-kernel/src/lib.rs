@@ -15,7 +15,7 @@ pub mod gdt;
 pub mod memory;
 pub mod task;
 pub mod serial;
-pub mod framebuffer_off;
+pub mod framebuffer;
 pub mod pci_controller;
 
 extern crate multiboot2;

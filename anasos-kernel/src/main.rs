@@ -5,7 +5,7 @@ extern crate alloc;
 use core::panic::PanicInfo;
 
 use anasos_kernel::{
-    allocator, framebuffer_off::{self, mapping::{check_framebuffer_mapping, map_framebuffer}},
+    allocator, framebuffer::{self, mapping::{check_framebuffer_mapping, map_framebuffer}},
     hlt, init,
     memory::{
         self, is_identity_mapped,
@@ -154,7 +154,7 @@ fn kernel_main(boot_info: &BootInformation) -> ! {
     }
 
 
-    let mut framebuffer = framebuffer_off::Framebuffer::new(
+    let mut framebuffer = framebuffer::Framebuffer::new(
         framebuffer_width as usize,
         framebuffer_height as usize,
         unsafe {
