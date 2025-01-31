@@ -3,14 +3,16 @@ use embedded_graphics::pixelcolor::Rgb888;
 use embedded_graphics::geometry::{Dimensions, Size};
 use embedded_graphics::primitives::Rectangle;
 
+pub mod mapping;
+
 pub struct Framebuffer {
     width: usize,
     height: usize,
-    buffer: &'static mut [u8],
+    buffer: &'static mut [Rgb888],
 }
 
 impl Framebuffer {
-    pub fn new(width: usize, height: usize, buffer: &'static mut [u8]) -> Self {
+    pub fn new(width: usize, height: usize, buffer: &'static mut [Rgb888]) -> Self {
         Self {
             width,
             height,
@@ -18,11 +20,11 @@ impl Framebuffer {
         }
     }
 
-    pub fn buffer(&self) -> &[u8] {
+    pub fn buffer(&self) -> &[Rgb888] {
         self.buffer
     }
 
-    pub fn buffer_mut(&mut self) -> &mut [u8] {
+    pub fn buffer_mut(&mut self) -> &mut [Rgb888] {
         self.buffer
     }
 
@@ -53,17 +55,9 @@ impl DrawTarget for Framebuffer {
     where
         I: IntoIterator<Item = Pixel<Self::Color>>,
     {
-        for Pixel(coord, color) in pixels {
-            let x = coord.x;
-            let y = coord.y;
-    
-            if x >= 0 && y >= 0 && x < self.width as i32 && y < self.height as i32 {
-                let index = ((y as usize * self.width + x as usize) * 4) as usize;
-                self.buffer[index..index + 3].copy_from_slice(&[
-                    color.r(),
-                    color.g(),
-                    color.b(),
-                ]);
+        for Pixel(coord, color) in pixels.into_iter() {
+            if coord.x >= 0 && coord.y >= 0 && coord.x < self.width as i32 && coord.y < self.height as i32 {
+                self.buffer[self.width() * coord.y as usize + coord.x as usize] = color;
             }
         }
         Ok(())

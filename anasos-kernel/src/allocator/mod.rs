@@ -1,5 +1,4 @@
 use fixed_size_block::FixedSizeBlockAllocator;
-use multiboot2::FramebufferTag;
 use x86_64::{
     structures::paging::{
         mapper::MapToError, FrameAllocator, Mapper, Page, PageTableFlags, Size4KiB,
@@ -32,8 +31,13 @@ pub fn init_heap(
     let page_range = {
         let heap_start = VirtAddr::new(heap_start() as u64);
         let heap_end = heap_start + heap_size() - 1u64;
-        let heap_start_page = Page::containing_address(heap_start);
-        let heap_end_page = Page::containing_address(heap_end);
+        // let heap_start_page = Page::containing_address(heap_start);
+        // let heap_end_page = Page::containing_address(heap_end);
+        
+        // Changed the two lines below due to the unsafe line I had to comment further down
+        // Otherwise the compiler would not be able to properly infer the type of the variables
+        let heap_start_page = Page::<Size4KiB>::containing_address(heap_start);
+        let heap_end_page = Page::<Size4KiB>::containing_address(heap_end);
         Page::range_inclusive(heap_start_page, heap_end_page)
     };
 
@@ -42,7 +46,13 @@ pub fn init_heap(
         let frame = frame_allocator
             .allocate_frame()
             .ok_or(MapToError::FrameAllocationFailed)?;
-        unsafe { mapper.map_to(page, frame, flags, frame_allocator)?.flush() };
+        unsafe {
+            match mapper.map_to(page, frame, flags, frame_allocator) {
+                Ok(mf) => mf.flush(),
+                Err(MapToError::PageAlreadyMapped(_)) => (),
+                Err(e) => panic!("Error mapping heap page: {:?}", e),
+            }
+        }
     }
 
     // setup the global heap allocator

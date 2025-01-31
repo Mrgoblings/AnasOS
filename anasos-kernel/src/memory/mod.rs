@@ -1,16 +1,13 @@
-// use bootloader::bootinfo::{MemoryMap, MemoryRegionType};
-pub mod memory_map;
 use memory_map::{MemoryMap, MemoryRegionType};
 
 use x86_64::{
     structures::paging::{
-        FrameAllocator, Mapper, OffsetPageTable, Page, PageSize, PageTable, PageTableFlags, PhysFrame, Size4KiB, Translate
+        FrameAllocator, Mapper, OffsetPageTable, Page, PageTable, PhysFrame, Size4KiB, Translate
     },
     PhysAddr, VirtAddr,
 };
 
-use crate::println;
-
+pub mod memory_map;
 
 /// Initialize a new OffsetPageTable.
 ///

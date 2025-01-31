@@ -15,13 +15,12 @@ pub mod gdt;
 pub mod memory;
 pub mod task;
 pub mod serial;
-pub mod framebuffer;
-pub mod framebuffer_theseus;
 pub mod framebuffer_off;
 pub mod pci_controller;
 
 extern crate multiboot2;
-// use multiboot2::BootInformation;
+#[cfg(test)]
+use multiboot2::BootInformation;
 
 
 pub fn init() {
