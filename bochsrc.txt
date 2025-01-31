@@ -1,0 +1,40 @@
+# Bochs Configuration File
+
+# Path to the kernel
+# symbol: AnasOS/boot/kernel
+gdbstub: enabled=1, port=1234
+
+# CPU configuration
+cpu: count=1, model=bx_generic, ips=1000000
+
+# Memory configuration
+megs: 2048
+
+# Debugging options
+display_library: x, options="gui_debug"
+log: bochs.log
+magic_break: enabled=1
+mouse: enabled=1
+
+# Boot options
+boot: disk
+
+# Disk setup
+ata0-master: type=disk, path="AnasOS.iso", mode=flat, cylinders=0, heads=0, spt=0
+
+# GRUB can handle modern BIOS extensions, so make sure these are enabled
+ata0-slave: type=none
+ata1-master: type=none
+ata1-slave: type=none
+
+# VGA display
+vga: extension=vbe
+
+# Debugger settings
+debugger_log: debugger.log
+
+# PCI support
+pci: enabled=1, chipset=i440fx
+
+# Serial port configuration
+com1: enabled=1, mode=file, dev="serial.log"

@@ -1,13 +1,13 @@
-// use bootloader::bootinfo::{MemoryMap, MemoryRegionType};
-pub mod memory_map;
 use memory_map::{MemoryMap, MemoryRegionType};
 
 use x86_64::{
     structures::paging::{
-        FrameAllocator, Mapper, OffsetPageTable, Page, PageTable, PhysFrame, Size4KiB,
+        FrameAllocator, Mapper, OffsetPageTable, Page, PageTable, PhysFrame, Size4KiB, Translate
     },
     PhysAddr, VirtAddr,
 };
+
+pub mod memory_map;
 
 /// Initialize a new OffsetPageTable.
 ///
@@ -59,7 +59,7 @@ pub fn create_example_mapping(
 /// A FrameAllocator that returns usable frames from the bootloader's memory map.
 /// A FrameAllocator that returns usable frames from the bootloader's memory map.
 pub struct BootInfoFrameAllocator<'a> {
-    memory_map: &'a MemoryMap,
+    memory_map: &'a mut MemoryMap,
     next: usize,
 }
 
@@ -69,7 +69,7 @@ impl<'a> BootInfoFrameAllocator<'a> {
     /// This function is unsafe because the caller must guarantee that the passed
     /// memory map is valid. The main requirement is that all frames that are marked
     /// as `USABLE` in it are really unused.
-    pub unsafe fn init(memory_map: &'a MemoryMap) -> Self {
+    pub unsafe fn init(memory_map: &'a mut MemoryMap) -> Self {
         BootInfoFrameAllocator {
             memory_map,
             next: 0,
@@ -99,5 +99,16 @@ unsafe impl<'a> FrameAllocator<Size4KiB> for BootInfoFrameAllocator<'a> {
         let frame = self.usable_frames().nth(self.next);
         self.next += 1;
         frame
+    }
+}
+
+
+pub fn is_identity_mapped(virtual_address: VirtAddr, mapper: &impl Translate) -> bool {
+    if let Some(physical_address) = mapper.translate_addr(virtual_address) {
+        // Compare physical and virtual addresses
+        physical_address.as_u64() == virtual_address.as_u64()
+    } else {
+        // Address is not mapped at all
+        false
     }
 }

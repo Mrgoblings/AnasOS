@@ -1,9 +1,12 @@
 target/
 AnasOS/boot/kernel
 .vscode/settings.json
+serial.log
 
 *.bin
 *.out
 *.o
 *.elf
 *.iso
+*.log
+*.ini

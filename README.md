@@ -60,6 +60,7 @@ Here are some tutorials and resources that were used in the creation of AnasOS:
 - [Multiboot Specification](https://wiki.osdev.org/Multiboot)
 - [GNU GRUB Multiboot](https://www.gnu.org/software/grub/manual/multiboot/multiboot.html#OS-image-format)
 - [Paging in Operating System](https://www.geeksforgeeks.org/paging-in-operating-system/)
+- [FrameBuffer Setup Tread](https://www.reddit.com/r/osdev/comments/oapp4z/how_to_make_the_frambuffer/?rdt=45716)
 
 Debugging:
 

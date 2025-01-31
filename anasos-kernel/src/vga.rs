@@ -12,6 +12,8 @@ use core::fmt;
 // Used to create a mutex for the Writer instance
 use spin::Mutex;
 
+use crate::serial;
+
 const VGA_BUFFER: *mut u8 = 0xb8000 as *mut u8;
 
 lazy_static! {
@@ -242,5 +244,6 @@ pub fn _print(args: fmt::Arguments) {
     use x86_64::instructions::interrupts;
     interrupts::without_interrupts(|| {
         WRITER.lock().write_fmt(args).unwrap();
+        serial::_print(args);
     });
 }

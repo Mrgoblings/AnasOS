@@ -14,8 +14,12 @@ pub mod vga;
 pub mod gdt;
 pub mod memory;
 pub mod task;
+pub mod serial;
+pub mod framebuffer;
+pub mod pci_controller;
 
 extern crate multiboot2;
+#[cfg(test)]
 use multiboot2::BootInformation;
 
 
