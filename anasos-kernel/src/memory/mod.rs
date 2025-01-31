@@ -70,12 +70,10 @@ impl<'a> BootInfoFrameAllocator<'a> {
     /// memory map is valid. The main requirement is that all frames that are marked
     /// as `USABLE` in it are really unused.
     pub unsafe fn init(memory_map: &'a mut MemoryMap) -> Self {
-        let allocator = BootInfoFrameAllocator {
+        BootInfoFrameAllocator {
             memory_map,
             next: 0,
-        };
-
-        allocator
+        }
     }
 
     /// Returns an iterator over the usable frames specified in the memory map.
