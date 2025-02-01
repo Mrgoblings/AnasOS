@@ -17,6 +17,7 @@ pub mod task;
 pub mod serial;
 pub mod framebuffer;
 pub mod pci_controller;
+pub mod apps;
 
 extern crate multiboot2;
 #[cfg(test)]
