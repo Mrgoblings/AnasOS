@@ -25,10 +25,15 @@ use multiboot2::BootInformation;
 
 
 pub fn init() {
+    println!("GDT init");
     gdt::init();
+    println!("Interrupts init_idt");
     interrupts::init_idt();
+    println!("Interrupts PICS.lock().initialize");
     unsafe { interrupts::PICS.lock().initialize() };
+    println!("Interrupts enable");
     x86_64::instructions::interrupts::enable();
+    println!("lib init done");
 }
 
 pub fn hlt() -> ! {

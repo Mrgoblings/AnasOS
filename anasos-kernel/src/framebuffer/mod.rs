@@ -2,52 +2,64 @@ use embedded_graphics::prelude::*;
 use embedded_graphics::pixelcolor::Rgb888;
 use embedded_graphics::geometry::{Dimensions, Size};
 use embedded_graphics::primitives::Rectangle;
+use core::sync::atomic::{AtomicBool, Ordering};
 
+// keep
 pub mod mapping;
 
-pub struct Framebuffer {
+pub struct Framebuffer<'a> {
     width: usize,
     height: usize,
-    buffer: &'static mut [Rgb888],
+    front_buffer: &'a mut [Rgb888],
+    back_buffer: &'a mut [Rgb888],
+    swap_requested: AtomicBool,
 }
 
-impl Framebuffer {
-    pub fn new(width: usize, height: usize, buffer: &'static mut [Rgb888]) -> Self {
+impl<'a> Framebuffer<'a> {
+    pub fn new(width: usize, height: usize, front: &'a mut [Rgb888], back: &'a mut [Rgb888]) -> Self {
         Self {
             width,
             height,
-            buffer,
+            front_buffer: front,
+            back_buffer: back,
+            swap_requested: AtomicBool::new(false),
         }
     }
 
-    pub fn buffer(&self) -> &[Rgb888] {
-        self.buffer
+    pub fn swap_buffers(&mut self) {
+        if self.swap_requested.load(Ordering::Relaxed) {
+            core::mem::swap(&mut self.front_buffer, &mut self.back_buffer);
+            self.swap_requested.store(false, Ordering::Relaxed);
+        }
     }
 
-    pub fn buffer_mut(&mut self) -> &mut [Rgb888] {
-        self.buffer
+    pub fn request_swap(&self) {
+        self.swap_requested.store(true, Ordering::Relaxed);
+    }
+    
+    pub fn front_buffer(&self) -> &[Rgb888] {
+        self.front_buffer
+    }
+    
+    pub fn back_buffer_mut(&mut self) -> &mut [Rgb888] {
+        self.back_buffer
     }
 
-    pub fn dimensions(&self) -> (usize, usize) {
-        (self.width, self.height)
-    }
-
-    pub fn width(&self) -> usize {
-        self.width
-    }
-
-    pub fn height(&self) -> usize {
-        self.height
+    pub fn draw_pixel(&mut self, x: usize, y: usize, color: Rgb888) {
+        let width = self.width;
+        if x < self.width && y < self.height {
+            self.back_buffer_mut()[y * width + x] = color;
+        }
     }
 }
 
-impl Dimensions for Framebuffer {
+impl<'a> Dimensions for Framebuffer<'a> {
     fn bounding_box(&self) -> Rectangle {
         Rectangle::new(Point::zero(), Size::new(self.width as u32, self.height as u32))
     }
 }
 
-impl DrawTarget for Framebuffer {
+impl<'a> DrawTarget for Framebuffer<'a> {
     type Color = Rgb888;
     type Error = core::convert::Infallible;
 
@@ -55,11 +67,30 @@ impl DrawTarget for Framebuffer {
     where
         I: IntoIterator<Item = Pixel<Self::Color>>,
     {
-        for Pixel(coord, color) in pixels.into_iter() {
+        let width = self.width;
+        for Pixel(coord, color) in pixels {
             if coord.x >= 0 && coord.y >= 0 && coord.x < self.width as i32 && coord.y < self.height as i32 {
-                self.buffer[self.width() * coord.y as usize + coord.x as usize] = color;
+                self.back_buffer_mut()[width * coord.y as usize + coord.x as usize] = color;
             }
         }
+        self.request_swap();
         Ok(())
+    }
+}
+
+
+pub struct FramePosition {
+    pub x: usize,
+    pub y: usize,
+    pub color: Rgb888,
+}
+
+impl FramePosition {
+    pub fn new(x: usize, y: usize, color: Rgb888) -> Self {
+        Self {
+            x,
+            y,
+            color,
+        }
     }
 }

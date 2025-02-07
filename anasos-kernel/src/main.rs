@@ -4,6 +4,7 @@
 extern crate alloc;
 use core::panic::PanicInfo;
 
+use alloc::{boxed::Box, vec};
 use anasos_kernel::{
     allocator, framebuffer::{self, mapping::{check_framebuffer_mapping, map_framebuffer}},
     hlt, init,
@@ -13,7 +14,7 @@ use anasos_kernel::{
         BootInfoFrameAllocator,
     },
     println, serial_println,
-    task::{executor::Executor, keyboard, Task},
+    task::{executor::Executor, keyboard, draw, Task},
 };
 use embedded_graphics::{
     mono_font::{ascii::FONT_6X9, MonoTextStyleBuilder},
@@ -35,8 +36,25 @@ pub extern "C" fn _start(mb_magic: u32, mbi_ptr: u32) -> ! {
         panic!("Invalid Multiboot2 magic number");
     }
 
-    let boot_info =
-        unsafe { BootInformation::load(mbi_ptr as *const BootInformationHeader).unwrap() };
+    println!("Multiboot2 magic number: {:#x}", mb_magic);
+    println!("Multiboot2 info pointer: {:#x}", mbi_ptr);
+
+    println!("Multiboot2 Header:");
+
+    unsafe {
+        let header_bytes = core::slice::from_raw_parts(mbi_ptr as *const u8, 32);
+        println!("Multiboot2 Header (First 32 Bytes): {:x?}", header_bytes);
+    }
+    
+    let boot_info_res =
+        unsafe { BootInformation::load(mbi_ptr as *const BootInformationHeader) };
+    
+    let boot_info;
+    match boot_info_res {
+            Ok(info) => { boot_info = info; }
+            Err(e) => panic!("Failed to load Multiboot2 info: {:?}", e),
+    }
+
     let _cmd = boot_info.command_line_tag();
 
     if let Some(bootloader_name) = boot_info.boot_loader_name_tag() {
@@ -84,6 +102,10 @@ fn kernel_main(boot_info: &BootInformation) -> ! {
     let mut mapper = unsafe { memory::init(phys_mem_offset) };
     let mut memory_map: MemoryMap =
         MemoryMap::from_memory_map_tag(boot_info.memory_map_tag().unwrap());
+
+    for region in memory_map.iter() {
+        println!("{:?}", region);
+    }
 
     let framebuffer_tag = boot_info
         .framebuffer_tag()
@@ -153,16 +175,21 @@ fn kernel_main(boot_info: &BootInformation) -> ! {
         panic!("Framebuffer not identity mapped");
     }
 
+    let framebuffer_size = framebuffer_width as usize * framebuffer_height as usize * 4;
+    //change with something like malloc
+    let mut back_buffer = vec![Rgb888::BLACK; framebuffer_size];// [Rgb888::BLACK; 1920 * 1080];//vec![Rgb888::BLACK; framebuffer_size];
+    // let mut back_buffer = Box::new([Rgb888::GREEN; 300000]);//1920 * 1080 * 4]);
 
     let mut framebuffer = framebuffer::Framebuffer::new(
         framebuffer_width as usize,
         framebuffer_height as usize,
         unsafe {
             core::slice::from_raw_parts_mut(
-                0xfd000000 as *mut Rgb888,
+                framebuffer_phys_addr.as_u64() as *mut Rgb888,
                 framebuffer_height as usize * framebuffer_width as usize
             )
         },
+        &mut back_buffer[..],
     );
 
     // Draw a circle
@@ -188,9 +215,12 @@ fn kernel_main(boot_info: &BootInformation) -> ! {
         .unwrap();
 
 
+    println!("Framebuffer initialized and with successful drawing");
+
     let mut executor = Executor::new();
-    executor.spawn(Task::new(example_task()));
     executor.spawn(Task::new(keyboard::print_keypresses()));
+    executor.spawn(Task::new(draw::draw()));
+    // executor.spawn(Task::new(draw::test_fill_screen()));
     executor.run(); // This function will never return
 }
 
@@ -200,26 +230,4 @@ fn test_kernel_main(_boot_info: &BootInformation) -> ! {
     println!("Tests passed");
 
     hlt();
-}
-
-// Test async functions
-async fn async_number() -> u32 {
-    42
-}
-
-async fn example_task() {
-    let number = async_number().await;
-    println!("async number: {}", number);
-}
-
-use core::ptr;
-
-pub fn write_to_mmio(addr: u64, value: u32) {
-    unsafe {
-        ptr::write_volatile(addr as *mut u32, value);
-    }
-}
-
-pub fn read_from_mmio(addr: u64) -> u32 {
-    unsafe { ptr::read_volatile(addr as *const u32) }
 }

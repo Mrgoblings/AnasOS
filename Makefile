@@ -29,10 +29,10 @@ image:
 	grub-mkrescue -o AnasOS.iso AnasOS/
 
 run:
-	qemu-system-x86_64 AnasOS.iso -vga std -device isa-debug-exit,iobase=0xf4,iosize=0x04 -serial stdio
+	qemu-system-x86_64 -drive format=raw,file=AnasOS.iso -m 8G -vga std -device isa-debug-exit,iobase=0xf4,iosize=0x04 -serial stdio
 
 run-vnc:
-	qemu-system-x86_64 AnasOS.iso -vga std -device isa-debug-exit,iobase=0xf4,iosize=0x04 -serial stdio -vnc :0
+	qemu-system-x86_64 -drive format=raw,file=AnasOS.iso -m 8G -vga std -device isa-debug-exit,iobase=0xf4,iosize=0x04 -serial stdio -vnc :0
 
 debug:
 	bochs -f bochsrc.txt -q
