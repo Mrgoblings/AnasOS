@@ -14,7 +14,6 @@ use crate::{
 };
 
 
-// TODO - FRAMEBUFFER
 static FRAME_QUEUE: OnceCell<ArrayQueue<FramePosition>> = OnceCell::uninit();
 static WAKER: AtomicWaker = AtomicWaker::new();
 
@@ -40,6 +39,7 @@ pub async fn draw() {
         add_frame_position(frame.x, frame.y, frame.color);
     }
 }
+
 
 pub struct FrameStream {
     _private: (),
@@ -76,6 +76,7 @@ impl Stream for FrameStream {
         }
     }
 }
+
 
 pub fn swap_buffers() {
     let mut framebuffer = unsafe { FRAMEBUFFER.lock() };

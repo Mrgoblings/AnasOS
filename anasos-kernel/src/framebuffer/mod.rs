@@ -5,6 +5,8 @@ use embedded_graphics::primitives::Rectangle;
 use spin::Mutex;
 use core::sync::atomic::{AtomicBool, Ordering};
 
+use crate::println;
+
 pub mod mapping;
 
 pub static mut FRAMEBUFFER: Mutex<Option<Framebuffer>> = Mutex::new(None);
@@ -31,7 +33,7 @@ impl<'a> Framebuffer<'a> {
 
     pub fn swap_buffers(&mut self) {
         if self.swap_requested.load(Ordering::Relaxed) {
-            core::mem::swap(&mut self.front_buffer, &mut self.back_buffer);
+            self.front_buffer.copy_from_slice(&self.back_buffer);
             self.swap_requested.store(false, Ordering::Relaxed);
         }
     }
@@ -39,11 +41,11 @@ impl<'a> Framebuffer<'a> {
     pub fn request_swap(&self) {
         self.swap_requested.store(true, Ordering::Relaxed);
     }
-    
+
     pub fn front_buffer(&self) -> &[Rgb888] {
         self.front_buffer
     }
-    
+
     pub fn back_buffer_mut(&mut self) -> &mut [Rgb888] {
         self.back_buffer
     }

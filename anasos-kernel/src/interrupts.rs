@@ -74,26 +74,9 @@ impl InterruptIndex {
 extern "x86-interrupt" fn timer_interrupt_handler(
     _stack_frame: InterruptStackFrame)
 {
-    // static mut COUNTER: u32 = 0;
-    // unsafe {
-    //     COUNTER += 1;
-    // }
-    
-    // crate::task::draw::swap_buffers();
-
     print!("."); 
 
     swap_buffers();
-
-    // for y in 0..480 {
-    //     for x in 0..640 {
-    //         if unsafe { COUNTER } % 2 == 0 {
-    //             crate::task::draw::add_frame_position(x, y, Rgb888::RED);
-    //         } else {
-    //             crate::task::draw::add_frame_position(x, y, Rgb888::GREEN);
-    //         }
-    //     }
-    // }
 
     unsafe {
         PICS.lock()

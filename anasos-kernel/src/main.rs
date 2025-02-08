@@ -246,7 +246,6 @@ fn kernel_main(boot_info: &BootInformation) -> ! {
     unsafe {
         let mut framebuffer = FRAMEBUFFER.lock();
         let framebuffer = framebuffer.as_mut().expect("framebuffer lock poisoned");
-        framebuffer.swap_buffers();
 
         Circle::new(Point::new(100, 100), 50)
             .into_styled(style)
@@ -256,17 +255,13 @@ fn kernel_main(boot_info: &BootInformation) -> ! {
         Text::new("Hello, OS!", Point::new(10, 10), text_style)
             .draw(framebuffer)
             .unwrap();
-        
-        framebuffer.request_swap();
     };
-
 
     println!("Framebuffer initialized and with successful drawing");
 
     let mut executor = Executor::new();
     executor.spawn(Task::new(keyboard::print_keypresses()));
-    executor.spawn(Task::new(draw::draw()));
-    // executor.spawn(Task::new(draw::test_fill_screen()));
+    // executor.spawn(Task::new(draw::draw()));
     executor.run(); // This function will never return
 }
 
