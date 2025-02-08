@@ -1,20 +1,20 @@
 use core::{
     pin::Pin,
-    task::{Context, Poll}, time::Duration,
+    task::{Context, Poll},
 };
 
 use conquer_once::spin::OnceCell;
 use crossbeam_queue::ArrayQueue;
-use embedded_graphics::{pixelcolor::Rgb888, prelude::RgbColor};
+use embedded_graphics::pixelcolor::Rgb888;
 use futures_util::{task::AtomicWaker, Stream, StreamExt};
-use spin::Mutex;
 
 use crate::{
-    framebuffer::{FramePosition, Framebuffer},
+    framebuffer::{FramePosition, FRAMEBUFFER},
     println,
 };
 
-pub static mut FRAMEBUFFER: Mutex<Option<Framebuffer>> = Mutex::new(None);
+
+// TODO - FRAMEBUFFER
 static FRAME_QUEUE: OnceCell<ArrayQueue<FramePosition>> = OnceCell::uninit();
 static WAKER: AtomicWaker = AtomicWaker::new();
 

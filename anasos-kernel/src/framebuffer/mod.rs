@@ -2,10 +2,13 @@ use embedded_graphics::prelude::*;
 use embedded_graphics::pixelcolor::Rgb888;
 use embedded_graphics::geometry::{Dimensions, Size};
 use embedded_graphics::primitives::Rectangle;
+use spin::Mutex;
 use core::sync::atomic::{AtomicBool, Ordering};
 
-// keep
 pub mod mapping;
+
+pub static mut FRAMEBUFFER: Mutex<Option<Framebuffer>> = Mutex::new(None);
+
 
 pub struct Framebuffer<'a> {
     width: usize,
