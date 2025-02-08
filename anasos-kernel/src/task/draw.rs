@@ -14,7 +14,7 @@ use crate::{
     println,
 };
 
-pub static FRAMEBUFFER: Mutex<Option<Framebuffer>> = Mutex::new(None);
+pub static mut FRAMEBUFFER: Mutex<Option<Framebuffer>> = Mutex::new(None);
 static FRAME_QUEUE: OnceCell<ArrayQueue<FramePosition>> = OnceCell::uninit();
 static WAKER: AtomicWaker = AtomicWaker::new();
 
@@ -78,7 +78,7 @@ impl Stream for FrameStream {
 }
 
 pub fn swap_buffers() {
-    let mut framebuffer = FRAMEBUFFER.lock();
+    let mut framebuffer = unsafe { FRAMEBUFFER.lock() };
     if let Some(framebuffer) = framebuffer.as_mut() {
         framebuffer.swap_buffers();
     }

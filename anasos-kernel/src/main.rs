@@ -4,15 +4,14 @@
 extern crate alloc;
 use core::panic::PanicInfo;
 
-use alloc::{boxed::Box, vec};
 use anasos_kernel::{
-    allocator, framebuffer::{self, mapping::{check_framebuffer_mapping, map_framebuffer}},
+    allocator, framebuffer::{self, mapping::map_framebuffer},
     hlt, init,
     memory::{
-        self, create_identity_mapping, is_identity_mapped, memory_map::{FrameRange, FromMemoryMapTag, MemoryMap, MemoryRegion, MemoryRegionType}, BootInfoFrameAllocator
+        self, is_identity_mapped, memory_map::{FrameRange, FromMemoryMapTag, MemoryMap, MemoryRegion, MemoryRegionType}, BootInfoFrameAllocator
     },
     println, serial_println,
-    task::{draw, executor::Executor, keyboard, Task},
+    task::{draw::{self, FRAMEBUFFER}, executor::Executor, keyboard, Task},
 };
 use embedded_graphics::{
     mono_font::{ascii::FONT_6X9, MonoTextStyleBuilder},
@@ -27,6 +26,7 @@ use x86_64::{
 
 extern crate multiboot2;
 use multiboot2::{BootInformation, BootInformationHeader};
+
 
 #[no_mangle]
 pub extern "C" fn _start(mb_magic: u32, mbi_ptr: u32) -> ! {
@@ -132,7 +132,6 @@ fn kernel_main(boot_info: &BootInformation) -> ! {
         region_type: MemoryRegionType::Reserved,
     });
 
-
     // Calculate total pages usable
     let total_pages: u64 = memory_map.iter()
     .filter(|region| region.region_type == MemoryRegionType::Usable)
@@ -161,8 +160,6 @@ fn kernel_main(boot_info: &BootInformation) -> ! {
                 }
                 current += 4096;
             }
-
-            
             if back_buffer_phys_addr.as_u64() != 0 {
                 break;
             }
@@ -188,22 +185,6 @@ fn kernel_main(boot_info: &BootInformation) -> ! {
         Ok(_) => println!("Front framebuffer mapped"),
         Err(e) => panic!("Front framebuffer mapping failed: {:?}", e),
     }
-
-    // check_framebuffer_mapping(&mut mapper, framebuffer_tag);
-    // if is_identity_mapped(VirtAddr::new(framebuffer_phys_addr.as_u64()), &mapper) {
-    //     println!(
-    //         "Front framebuffer identity mapped to address: {:x}",
-    //         framebuffer_phys_addr.as_u64()
-    //     );
-    // } else {
-    //     panic!("Front framebuffer not identity mapped");
-    // }
-    
-    // let mut back_buffer = vec![Rgb888::BLACK; framebuffer_size];// [Rgb888::BLACK; 1920 * 1080];//vec![Rgb888::BLACK; framebuffer_size];
-    // let mut back_buffer = Box::new([Rgb888::GREEN; 300000]);//1920 * 1080 * 4]);
-
-    // map the back framebuffer from addres 0x300000
-    //get a physical address of the back buffer that has at least the size of the framebuffer free
 
     // Back Buffer allocation    
     match map_framebuffer(
@@ -255,6 +236,10 @@ fn kernel_main(boot_info: &BootInformation) -> ! {
     Text::new("Hello, OS!", Point::new(10, 10), text_style)
         .draw(&mut framebuffer)
         .unwrap();
+
+    framebuffer.request_swap();
+
+    unsafe { FRAMEBUFFER.lock().replace(framebuffer) };
 
 
     println!("Framebuffer initialized and with successful drawing");

@@ -9,6 +9,7 @@ use lazy_static::lazy_static;
 use pic8259::ChainedPics;
 use spin;
 
+use crate::task::draw::swap_buffers;
 use crate::{println, print, gdt, hlt};
 
 pub const PIC_1_OFFSET: u8 = 32;
@@ -81,6 +82,8 @@ extern "x86-interrupt" fn timer_interrupt_handler(
     // crate::task::draw::swap_buffers();
 
     print!("."); 
+
+    swap_buffers();
 
     // for y in 0..480 {
     //     for x in 0..640 {
