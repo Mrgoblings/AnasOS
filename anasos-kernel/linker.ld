@@ -2,7 +2,8 @@ ENTRY(start_protected_mode)
 
 SECTIONS
 {
-    /*. = 1M; /* Set the code starting address to 1MB */
+    . = 1M;
+    
     .boot ALIGN(4096):
     {
         KEEP(*(.multiboot_header));
@@ -29,7 +30,6 @@ SECTIONS
         __bss_end = .;
     }
 
-    /* Only Reference, Do Not Specify Sizes */
     _stack_start = stack_bottom;
     _stack_end = stack_top;
     _heap_start = heap_bottom;
@@ -42,14 +42,4 @@ SECTIONS
         *(.debug_line)
         *(.debug_str)
     }
-
-    /* . += 0x200000;
-
-    .heap ALIGN(4096):
-    {
-        _heap_start = .;
-        *(.heap)
-        _heap_end = .;
-    } */
-   
 }
