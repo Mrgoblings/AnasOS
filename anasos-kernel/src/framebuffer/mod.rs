@@ -5,8 +5,6 @@ use embedded_graphics::primitives::Rectangle;
 use spin::Mutex;
 use core::sync::atomic::{AtomicBool, Ordering};
 
-use crate::println;
-
 pub mod mapping;
 
 pub static mut FRAMEBUFFER: Mutex<Option<Framebuffer>> = Mutex::new(None);

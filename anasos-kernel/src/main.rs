@@ -21,7 +21,7 @@ use anasos_kernel::{
     },
 };
 use embedded_graphics::{
-    mono_font::{ascii::FONT_6X9, MonoTextStyleBuilder},
+    mono_font::{ascii::{FONT_10X20, FONT_6X9}, MonoTextStyleBuilder},
     pixelcolor::Rgb888,
     prelude::*,
     primitives::{Circle, PrimitiveStyleBuilder},
@@ -173,11 +173,18 @@ fn kernel_main(boot_info: &BootInformation) -> ! {
                     break;
                 }
                 current += 4096;
+                if end - current < framebuffer_size {
+                    break;
+                }
             }
             if back_buffer_phys_addr.as_u64() != 0 {
                 break;
             }
         }
+    }
+
+    if back_buffer_phys_addr.as_u64() == 0 {
+        panic!("Back buffer physical address not found");
     }
 
     let mut frame_allocator = unsafe { BootInfoFrameAllocator::init(&mut memory_map) };
@@ -239,7 +246,7 @@ fn kernel_main(boot_info: &BootInformation) -> ! {
 
     // Draw text
     let text_style = MonoTextStyleBuilder::new()
-    .font(&FONT_6X9)
+    .font(&FONT_10X20)
     .text_color(Rgb888::WHITE)
     .build();
 
@@ -252,7 +259,7 @@ fn kernel_main(boot_info: &BootInformation) -> ! {
             .draw(framebuffer)
             .unwrap();
 
-        Text::new("Hello, OS!", Point::new(10, 10), text_style)
+        Text::new("Hello, OS!", Point::new(10, 20), text_style)
             .draw(framebuffer)
             .unwrap();
     };
