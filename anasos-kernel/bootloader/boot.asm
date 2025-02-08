@@ -214,8 +214,11 @@ end_page_table:
 stack_bottom:
     RESB 4096 * 5 ; bytes reserved for stack (5 pages)
 stack_top:
+
+SECTION .heap
+ALIGN 4096
 heap_bottom:
-    RESB 100 * 1024 ; 100 KiB reserved for heap
+    RESB 1 * 100 * 1024 ; 100 KB reserved for heap
 heap_top:
 
 SECTION .rodata

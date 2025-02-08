@@ -2,7 +2,7 @@ use memory_map::{MemoryMap, MemoryRegionType};
 
 use x86_64::{
     structures::paging::{
-        FrameAllocator, Mapper, OffsetPageTable, Page, PageTable, PhysFrame, Size4KiB, Translate
+        page, FrameAllocator, Mapper, OffsetPageTable, Page, PageSize, PageTable, PageTableFlags, PhysFrame, Size4KiB, Translate
     },
     PhysAddr, VirtAddr,
 };
@@ -110,5 +110,18 @@ pub fn is_identity_mapped(virtual_address: VirtAddr, mapper: &impl Translate) ->
     } else {
         // Address is not mapped at all
         false
+    }
+}
+
+pub fn create_identity_mapping(start_addr_phys: PhysAddr, end_addr_phys: PhysAddr, flags: PageTableFlags, mapper: &mut OffsetPageTable<'_>, frame_allocator: &mut impl FrameAllocator<Size4KiB>) {
+    let mut current_addr = start_addr_phys;
+    while current_addr < end_addr_phys {
+        let page = Page::<Size4KiB>::containing_address(VirtAddr::new(current_addr.as_u64()));
+        let frame = PhysFrame::containing_address(current_addr);
+        let result = unsafe {
+            mapper.map_to(page, frame, flags, frame_allocator)
+        };
+        result.expect("Failed to map page").flush();
+        current_addr += Size4KiB::SIZE;
     }
 }

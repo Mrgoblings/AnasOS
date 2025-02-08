@@ -10,6 +10,7 @@ header_start:
     ; Checksum
     DD -(0xE85250D6 + 0 + (header_end - header_start))
 
+_header_console_tag:
     ; Console Flags Tag
     ALIGN 8
     DW 4                     ; Tag type: Console flags
@@ -17,6 +18,7 @@ header_start:
     DD 12                    ; Size of this tag
     DD 1                     ; Console flags (Bit 0 set)
 
+_header_framebuffer:
     ; Framebuffer Tag
     ALIGN 8
     DW 5                     ; Tag type: Framebuffer
@@ -26,8 +28,11 @@ header_start:
     DD 720                   ; Preferred framebuffer height
     DD 32                    ; Preferred bits per pixel
 
+_header_end:
     ; End Tag
     ALIGN 8
     DD 0                     ; Tag type: End tag
     DD 8                     ; Size of end tag
+    
+    ALIGN 8
 header_end:

@@ -1,5 +1,6 @@
 // FROM https://github.com/rust-osdev/bootloader/blob/v0.9.14/src/bootinfo/memory_map.rs
 // From http://wiki.osdev.org/Detecting_Memory_(x86)#Getting_an_E820_Memory_Map
+// TEMP Solution, remaps the given MemoryMapTag from bootloader. In reality is Unnecessary.
 use core::fmt;
 use core::ops::{Deref, DerefMut};
 

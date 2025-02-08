@@ -5,15 +5,20 @@ extern crate alloc;
 use core::panic::PanicInfo;
 
 use anasos_kernel::{
-    allocator, framebuffer::{self, mapping::{check_framebuffer_mapping, map_framebuffer}},
+    allocator,
+    framebuffer::{self, mapping::map_framebuffer, FRAMEBUFFER},
     hlt, init,
     memory::{
-        self, is_identity_mapped,
+        self,
         memory_map::{FrameRange, FromMemoryMapTag, MemoryMap, MemoryRegion, MemoryRegionType},
         BootInfoFrameAllocator,
     },
     println, serial_println,
-    task::{executor::Executor, keyboard, Task},
+    task::{
+        draw,
+        executor::Executor,
+        keyboard, Task,
+    },
 };
 use embedded_graphics::{
     mono_font::{ascii::FONT_6X9, MonoTextStyleBuilder},
@@ -23,7 +28,8 @@ use embedded_graphics::{
     text::Text,
 };
 use x86_64::{
-    PhysAddr, VirtAddr
+    structures::paging::{Mapper, Page, Size4KiB},
+    PhysAddr, VirtAddr,
 };
 
 extern crate multiboot2;
@@ -35,8 +41,26 @@ pub extern "C" fn _start(mb_magic: u32, mbi_ptr: u32) -> ! {
         panic!("Invalid Multiboot2 magic number");
     }
 
-    let boot_info =
-        unsafe { BootInformation::load(mbi_ptr as *const BootInformationHeader).unwrap() };
+    println!("Multiboot2 magic number: {:#x}", mb_magic);
+    println!("Multiboot2 info pointer: {:#x}", mbi_ptr);
+
+    println!("Multiboot2 Header:");
+
+    unsafe {
+        let header_bytes = core::slice::from_raw_parts(mbi_ptr as *const u8, 32);
+        println!("Multiboot2 Header (First 32 Bytes): {:x?}", header_bytes);
+    }
+
+    let boot_info_res = unsafe { BootInformation::load(mbi_ptr as *const BootInformationHeader) };
+
+    let boot_info;
+    match boot_info_res {
+        Ok(info) => {
+            boot_info = info;
+        }
+        Err(e) => panic!("Failed to load Multiboot2 info: {:?}", e),
+    }
+
     let _cmd = boot_info.command_line_tag();
 
     if let Some(bootloader_name) = boot_info.boot_loader_name_tag() {
@@ -85,25 +109,32 @@ fn kernel_main(boot_info: &BootInformation) -> ! {
     let mut memory_map: MemoryMap =
         MemoryMap::from_memory_map_tag(boot_info.memory_map_tag().unwrap());
 
+    for region in memory_map.iter() {
+        println!("{:?}", region);
+    }
+
     let framebuffer_tag = boot_info
         .framebuffer_tag()
         .unwrap()
         .ok()
         .ok_or("No framebuffer tag found")
         .unwrap();
-    
+
     let framebuffer_phys_addr = PhysAddr::new(framebuffer_tag.address());
     println!("Framebuffer physical address: {:?}", framebuffer_phys_addr);
-    
+
     let framebuffer_start = framebuffer_tag.address() as u64;
     let framebuffer_size = framebuffer_tag.pitch() as u64 * framebuffer_tag.height() as u64;
     let framebuffer_width = framebuffer_tag.width() as u64;
     let framebuffer_height = framebuffer_tag.height() as u64;
-    
+
     println!("Framebuffer start: {:#x}", framebuffer_start);
     println!("Framebuffer size: {}", framebuffer_size);
     println!("Framebuffer width: {}", framebuffer_width);
-    println!("Framebuffer end: {:#x}", framebuffer_start + framebuffer_size);
+    println!(
+        "Framebuffer end: {:#x}",
+        framebuffer_start + framebuffer_size
+    );
     println!("Framebuffer height: {}", framebuffer_height);
 
     // reserve framebuffer memory
@@ -112,58 +143,92 @@ fn kernel_main(boot_info: &BootInformation) -> ! {
         region_type: MemoryRegionType::Reserved,
     });
 
-
     // Calculate total pages usable
-    let total_pages: u64 = memory_map.iter()
-    .filter(|region| region.region_type == MemoryRegionType::Usable)
-    .map(|region| {
-        let start = region.range.start_addr();
-        let end = region.range.end_addr();
-        (end - start) / 4096 // 4 KiB page size
-    })
-    .sum();
+    let total_pages: u64 = memory_map
+        .iter()
+        .filter(|region| region.region_type == MemoryRegionType::Usable)
+        .map(|region| {
+            let start = region.range.start_addr();
+            let end = region.range.end_addr();
+            (end - start) / 4096 // 4 KiB page size
+        })
+        .sum();
 
     println!("Framebuffer total pages required: {}", total_pages);
 
+    // Back Buffer find physical address
+    let mut back_buffer_phys_addr: PhysAddr = PhysAddr::new(0); // it is never 0, but it is initialized to 0
+    for region in memory_map.iter() {
+        if region.region_type == MemoryRegionType::Usable
+            && region.range.end_addr() - region.range.start_addr() >= framebuffer_size
+        {
+            let start = region.range.start_addr();
+            let end = region.range.end_addr();
+            let mut current = start;
+
+            while current < end {
+                let page = Page::<Size4KiB>::containing_address(VirtAddr::new(current));
+                if !mapper.translate_page(page).is_ok() {
+                    back_buffer_phys_addr = PhysAddr::new(current);
+                    break;
+                }
+                current += 4096;
+            }
+            if back_buffer_phys_addr.as_u64() != 0 {
+                break;
+            }
+        }
+    }
 
     let mut frame_allocator = unsafe { BootInfoFrameAllocator::init(&mut memory_map) };
     allocator::init_heap(&mut mapper, &mut frame_allocator).expect("Heap initialization failed");
     println!("Heap initialized");
     // VALID HEAP ALLOCATION STARTS HERE
 
-
-    map_framebuffer(
+    // Front Buffer allocation
+    match map_framebuffer(
         framebuffer_phys_addr,
         framebuffer_size,
         VirtAddr::new(framebuffer_phys_addr.as_u64()),
         &mut mapper,
         &mut frame_allocator,
-    )
-    .expect("Framebuffer mapping failed");
-
-    println!("Framebuffer mapped");
-
-    check_framebuffer_mapping(&mut mapper, framebuffer_tag);
-    if is_identity_mapped(VirtAddr::new(framebuffer_phys_addr.as_u64()), &mapper) {
-        println!(
-            "Framebuffer identity mapped to address: {:x}",
-            framebuffer_phys_addr.as_u64()
-        );
-    } else {
-        panic!("Framebuffer not identity mapped");
+    ) {
+        Ok(_) => println!("Front framebuffer mapped"),
+        Err(e) => panic!("Front framebuffer mapping failed: {:?}", e),
     }
 
+    // Back Buffer allocation
+    match map_framebuffer(
+        back_buffer_phys_addr,
+        framebuffer_size as u64,
+        VirtAddr::new(back_buffer_phys_addr.as_u64()),
+        &mut mapper,
+        &mut frame_allocator,
+    ) {
+        Ok(_) => println!("Back framebuffer mapped"),
+        Err(e) => panic!("Back framebuffer mapping failed: {:?}", e),
+    }
 
-    let mut framebuffer = framebuffer::Framebuffer::new(
+    let framebuffer = framebuffer::Framebuffer::new(
         framebuffer_width as usize,
         framebuffer_height as usize,
         unsafe {
             core::slice::from_raw_parts_mut(
-                0xfd000000 as *mut Rgb888,
-                framebuffer_height as usize * framebuffer_width as usize
+                framebuffer_phys_addr.as_u64() as *mut Rgb888,
+                framebuffer_height as usize * framebuffer_width as usize,
+            )
+        },
+        unsafe {
+            core::slice::from_raw_parts_mut(
+                back_buffer_phys_addr.as_u64() as *mut Rgb888,
+                framebuffer_height as usize * framebuffer_width as usize,
             )
         },
     );
+
+
+    //set new framebuffer
+    unsafe { FRAMEBUFFER.lock().replace(framebuffer); };
 
     // Draw a circle
     let style = PrimitiveStyleBuilder::new()
@@ -172,25 +237,31 @@ fn kernel_main(boot_info: &BootInformation) -> ! {
         .fill_color(Rgb888::GREEN)
         .build();
 
-    Circle::new(Point::new(100, 100), 50)
-        .into_styled(style)
-        .draw(&mut framebuffer)
-        .unwrap();
-
     // Draw text
     let text_style = MonoTextStyleBuilder::new()
-        .font(&FONT_6X9)
-        .text_color(Rgb888::WHITE)
-        .build();
+    .font(&FONT_6X9)
+    .text_color(Rgb888::WHITE)
+    .build();
 
-    Text::new("Hello, OS!", Point::new(10, 10), text_style)
-        .draw(&mut framebuffer)
-        .unwrap();
+    unsafe {
+        let mut framebuffer = FRAMEBUFFER.lock();
+        let framebuffer = framebuffer.as_mut().expect("framebuffer lock poisoned");
 
+        Circle::new(Point::new(100, 100), 50)
+            .into_styled(style)
+            .draw(framebuffer)
+            .unwrap();
+
+        Text::new("Hello, OS!", Point::new(10, 10), text_style)
+            .draw(framebuffer)
+            .unwrap();
+    };
+
+    println!("Framebuffer initialized and with successful drawing");
 
     let mut executor = Executor::new();
-    executor.spawn(Task::new(example_task()));
     executor.spawn(Task::new(keyboard::print_keypresses()));
+    // executor.spawn(Task::new(draw::draw()));
     executor.run(); // This function will never return
 }
 
@@ -200,26 +271,4 @@ fn test_kernel_main(_boot_info: &BootInformation) -> ! {
     println!("Tests passed");
 
     hlt();
-}
-
-// Test async functions
-async fn async_number() -> u32 {
-    42
-}
-
-async fn example_task() {
-    let number = async_number().await;
-    println!("async number: {}", number);
-}
-
-use core::ptr;
-
-pub fn write_to_mmio(addr: u64, value: u32) {
-    unsafe {
-        ptr::write_volatile(addr as *mut u32, value);
-    }
-}
-
-pub fn read_from_mmio(addr: u64) -> u32 {
-    unsafe { ptr::read_volatile(addr as *const u32) }
 }
