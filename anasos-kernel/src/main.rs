@@ -9,12 +9,10 @@ use anasos_kernel::{
     allocator, framebuffer::{self, mapping::{check_framebuffer_mapping, map_framebuffer}},
     hlt, init,
     memory::{
-        self, is_identity_mapped,
-        memory_map::{FrameRange, FromMemoryMapTag, MemoryMap, MemoryRegion, MemoryRegionType},
-        BootInfoFrameAllocator,
+        self, create_identity_mapping, is_identity_mapped, memory_map::{FrameRange, FromMemoryMapTag, MemoryMap, MemoryRegion, MemoryRegionType}, BootInfoFrameAllocator
     },
     println, serial_println,
-    task::{executor::Executor, keyboard, draw, Task},
+    task::{draw, executor::Executor, keyboard, Task},
 };
 use embedded_graphics::{
     mono_font::{ascii::FONT_6X9, MonoTextStyleBuilder},
@@ -24,7 +22,7 @@ use embedded_graphics::{
     text::Text,
 };
 use x86_64::{
-    PhysAddr, VirtAddr
+    structures::paging::{Mapper, Page, Size4KiB}, PhysAddr, VirtAddr
 };
 
 extern crate multiboot2;
@@ -147,6 +145,31 @@ fn kernel_main(boot_info: &BootInformation) -> ! {
 
     println!("Framebuffer total pages required: {}", total_pages);
 
+    // Back Buffer find physical address
+    let mut back_buffer_phys_addr: PhysAddr = PhysAddr::new(0); // it is never 0, but it is initialized to 0
+    for region in memory_map.iter() {
+        if region.region_type == MemoryRegionType::Usable && region.range.end_addr() - region.range.start_addr() >= framebuffer_size {
+            let start = region.range.start_addr();
+            let end = region.range.end_addr();
+            let mut current = start;
+
+            while current < end {
+                let page = Page::<Size4KiB>::containing_address(VirtAddr::new(current));
+                if !mapper.translate_page(page).is_ok() {
+                    back_buffer_phys_addr = PhysAddr::new(current);
+                    break;
+                }
+                current += 4096;
+            }
+
+            
+            if back_buffer_phys_addr.as_u64() != 0 {
+                break;
+            }
+        }
+    }
+
+
 
     let mut frame_allocator = unsafe { BootInfoFrameAllocator::init(&mut memory_map) };
     allocator::init_heap(&mut mapper, &mut frame_allocator).expect("Heap initialization failed");
@@ -154,31 +177,45 @@ fn kernel_main(boot_info: &BootInformation) -> ! {
     // VALID HEAP ALLOCATION STARTS HERE
 
 
-    map_framebuffer(
+    // Front Buffer allocation
+    match map_framebuffer(
         framebuffer_phys_addr,
         framebuffer_size,
         VirtAddr::new(framebuffer_phys_addr.as_u64()),
         &mut mapper,
         &mut frame_allocator,
-    )
-    .expect("Framebuffer mapping failed");
-
-    println!("Framebuffer mapped");
-
-    check_framebuffer_mapping(&mut mapper, framebuffer_tag);
-    if is_identity_mapped(VirtAddr::new(framebuffer_phys_addr.as_u64()), &mapper) {
-        println!(
-            "Framebuffer identity mapped to address: {:x}",
-            framebuffer_phys_addr.as_u64()
-        );
-    } else {
-        panic!("Framebuffer not identity mapped");
+    ) {
+        Ok(_) => println!("Front framebuffer mapped"),
+        Err(e) => panic!("Front framebuffer mapping failed: {:?}", e),
     }
 
-    let framebuffer_size = framebuffer_width as usize * framebuffer_height as usize * 4;
-    //change with something like malloc
-    let mut back_buffer = vec![Rgb888::BLACK; framebuffer_size];// [Rgb888::BLACK; 1920 * 1080];//vec![Rgb888::BLACK; framebuffer_size];
+    // check_framebuffer_mapping(&mut mapper, framebuffer_tag);
+    // if is_identity_mapped(VirtAddr::new(framebuffer_phys_addr.as_u64()), &mapper) {
+    //     println!(
+    //         "Front framebuffer identity mapped to address: {:x}",
+    //         framebuffer_phys_addr.as_u64()
+    //     );
+    // } else {
+    //     panic!("Front framebuffer not identity mapped");
+    // }
+    
+    // let mut back_buffer = vec![Rgb888::BLACK; framebuffer_size];// [Rgb888::BLACK; 1920 * 1080];//vec![Rgb888::BLACK; framebuffer_size];
     // let mut back_buffer = Box::new([Rgb888::GREEN; 300000]);//1920 * 1080 * 4]);
+
+    // map the back framebuffer from addres 0x300000
+    //get a physical address of the back buffer that has at least the size of the framebuffer free
+
+    // Back Buffer allocation    
+    match map_framebuffer(
+        back_buffer_phys_addr,
+        framebuffer_size as u64,
+        VirtAddr::new(back_buffer_phys_addr.as_u64()),
+        &mut mapper,
+        &mut frame_allocator,
+    ) {
+        Ok(_) => println!("Back framebuffer mapped"),
+        Err(e) => panic!("Back framebuffer mapping failed: {:?}", e),
+    }
 
     let mut framebuffer = framebuffer::Framebuffer::new(
         framebuffer_width as usize,
@@ -189,7 +226,12 @@ fn kernel_main(boot_info: &BootInformation) -> ! {
                 framebuffer_height as usize * framebuffer_width as usize
             )
         },
-        &mut back_buffer[..],
+        unsafe {
+            core::slice::from_raw_parts_mut(
+                back_buffer_phys_addr.as_u64() as *mut Rgb888,
+                framebuffer_height as usize * framebuffer_width as usize
+            )
+        },
     );
 
     // Draw a circle
