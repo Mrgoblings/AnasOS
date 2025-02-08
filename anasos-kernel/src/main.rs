@@ -5,20 +5,15 @@ extern crate alloc;
 use core::panic::PanicInfo;
 
 use anasos_kernel::{
-    allocator,
-    framebuffer::{self, mapping::map_framebuffer, FRAMEBUFFER},
-    hlt, init,
-    memory::{
+    allocator, apps, framebuffer::{self, mapping::map_framebuffer, FRAMEBUFFER}, hlt, init, memory::{
         self,
         memory_map::{FrameRange, FromMemoryMapTag, MemoryMap, MemoryRegion, MemoryRegionType},
         BootInfoFrameAllocator,
-    },
-    println, serial_println,
-    task::{
+    }, println, serial_println, task::{
         draw,
         executor::Executor,
         keyboard, Task,
-    },
+    }
 };
 use embedded_graphics::{
     mono_font::{ascii::{FONT_10X20, FONT_6X9}, MonoTextStyleBuilder},
@@ -233,38 +228,15 @@ fn kernel_main(boot_info: &BootInformation) -> ! {
         },
     );
 
-
     //set new framebuffer
     unsafe { FRAMEBUFFER.lock().replace(framebuffer); };
 
-    // Draw a circle
-    let style = PrimitiveStyleBuilder::new()
-        .stroke_color(Rgb888::RED)
-        .stroke_width(1)
-        .fill_color(Rgb888::GREEN)
-        .build();
-
-    // Draw text
-    let text_style = MonoTextStyleBuilder::new()
-    .font(&FONT_10X20)
-    .text_color(Rgb888::WHITE)
-    .build();
-
-    unsafe {
-        let mut framebuffer = FRAMEBUFFER.lock();
-        let framebuffer = framebuffer.as_mut().expect("framebuffer lock poisoned");
-
-        Circle::new(Point::new(100, 100), 50)
-            .into_styled(style)
-            .draw(framebuffer)
-            .unwrap();
-
-        Text::new("Hello, OS!", Point::new(10, 20), text_style)
-            .draw(framebuffer)
-            .unwrap();
-    };
 
     println!("Framebuffer initialized and with successful drawing");
+
+
+    apps::terminal::draw();
+
 
     let mut executor = Executor::new();
     executor.spawn(Task::new(keyboard::print_keypresses()));
