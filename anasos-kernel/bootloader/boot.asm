@@ -218,7 +218,7 @@ stack_top:
 SECTION .heap
 ALIGN 4096
 heap_bottom:
-    RESB 1 * 100 * 1024 ; 32 MB reserved for heap
+    RESB 1 * 100 * 1024 ; 100 KB reserved for heap
 heap_top:
 
 SECTION .rodata
