@@ -1,6 +1,3 @@
-use embedded_graphics::pixelcolor::Rgb888;
-use embedded_graphics::prelude::RgbColor;
-use futures_util::task;
 use x86_64::structures::idt::InterruptDescriptorTable;
 use x86_64::structures::idt::InterruptStackFrame;
 use x86_64::structures::idt::PageFaultErrorCode;
