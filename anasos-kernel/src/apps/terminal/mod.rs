@@ -75,34 +75,36 @@ impl App for Terminal {
 
         println!("Setting up text style");
 
-        let mut framebuffer = FRAMEBUFFER.lock();
-        println!("Got framebuffer lock");
-        let framebuffer = framebuffer.as_mut().expect("framebuffer lock poisoned");
-        println!("Got framebuffer");
+        {
+            let mut framebuffer = FRAMEBUFFER.lock();
+            println!("Got framebuffer lock");
+            let framebuffer = framebuffer.as_mut().expect("framebuffer lock poisoned");
+            println!("Got framebuffer");
 
+            Circle::new(Point::new(100, 100), 50)
+                .into_styled(style)
+                .draw(framebuffer)
+                .unwrap();
 
-        Circle::new(Point::new(100, 100), 50)
-            .into_styled(style)
-            .draw(framebuffer)
-            .unwrap();
+            println!("Drew circle");
 
-        println!("Drew circle");
-
-        let mut text: String = self.buffer.iter().collect();
-        if text.len() > 0 {
-            text = String::from("Type something");
+            let mut text: String = self.buffer.iter().collect();
+            if text.len() > 0 {
+                text = String::from("Type something");
+            }
+            Text::new(&text, Point::new(10, 20), text_style)
+                .draw(framebuffer)
+                .unwrap();
         }
-        Text::new(&text, Point::new(10, 20), text_style)
-            .draw(framebuffer)
-            .unwrap();
         println!("Drew text");
     }
 
     fn load(&mut self) -> Pin<Box<dyn Future<Output = ()> + Send + '_>> {
         Box::pin(async move {
             self.init();
-            unsafe{ self.draw() };
-            println!("loading terminal after first initial draw");
+            println!("loading terminal: after init");
+            unsafe { self.draw() };
+            println!("loading terminal: after first draw");
 
             while let Some(scancode) = self.key_inputs.next().await {
                 println!("Got scancode: {}", scancode);
@@ -122,7 +124,7 @@ impl App for Terminal {
                         }
                     }
                 }
-                
+
                 println!("Calling draw");
                 unsafe { self.draw() };
             }
