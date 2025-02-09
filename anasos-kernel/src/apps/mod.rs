@@ -1,7 +1,11 @@
-use core::{future::Future, pin::Pin, task::{Context, Poll}};
+use core::{
+    future::Future,
+    pin::Pin,
+    task::{Context, Poll},
+};
 
+use alloc::{boxed::Box, vec::Vec};
 use conquer_once::spin::OnceCell;
-use alloc::{boxed::Box, vec::{Vec}};
 use crossbeam_queue::ArrayQueue;
 use futures_util::{task::AtomicWaker, Stream};
 
@@ -10,8 +14,7 @@ use spin::Mutex;
 
 pub mod terminal;
 
-
-pub static APPS: OnceCell<Mutex<Option<AppList>>> = OnceCell::uninit();
+pub static APPS: OnceCell<Mutex<Vec<Box<dyn App>>>> = OnceCell::uninit();
 
 pub trait App: Send + Sync {
     fn name(&self) -> &'static str;
@@ -66,28 +69,31 @@ impl Stream for KeyStream {
             None => Poll::Pending,
         }
     }
-
 }
 
 pub struct AppList {
-    apps: Vec<Box<dyn App>>,
     active_app: usize,
 }
 
 impl AppList {
     pub fn new() -> Self {
-        APPS.try_init_once(|| Mutex::new(Some(AppList { apps: Vec::new(), active_app: 0 }))).expect("AppList::new should only be called once");
-        AppList { apps: Vec::new(), active_app: 0}
+        APPS.try_init_once(|| Mutex::new(Vec::new()))
+            .expect("AppList::new should only be called once");
+        AppList { active_app: 0 }
     }
 
     pub fn add_app(&mut self, app: Box<dyn App>) {
-        self.apps.push(app);
+        let mut apps = APPS.try_get().expect("AppList uninitialized").lock();
+
+        apps.push(app);
     }
 
     pub fn draw_all(&mut self) {
-        self.apps.sort_by(|a, b| a.priority().cmp(&b.priority()));
+        let mut apps = APPS.try_get().expect("AppList uninitialized").lock();
 
-        for app in &self.apps {
+        apps.sort_by(|a, b| a.priority().cmp(&b.priority()));
+
+        for app in &mut apps[..] {
             unsafe {
                 app.draw();
             }
@@ -95,39 +101,48 @@ impl AppList {
     }
 
     pub fn init_all(&mut self) {
-        for app in &self.apps {
+        let mut apps = APPS.try_get().expect("AppList uninitialized").lock();
+
+        for app in &mut apps[..] {
             app.init();
         }
     }
 
     pub async fn load_all(&mut self) {
-        for app in &mut self.apps {
+        let mut apps = APPS.try_get().expect("AppList uninitialized").lock();
+
+        for app in &mut apps[..] {
             app.load().await;
         }
     }
 
     pub fn add_key_input(&self, scancode: u8) {
-        self.apps[self.active_app].add_key_input(scancode);
+        let apps = APPS.try_get().expect("AppList uninitialized").lock();
+
+        apps[self.active_app].add_key_input(scancode);
     }
 
     pub fn next_app(&mut self) {
-        self.active_app = (self.active_app + 1) % self.apps.len();
+        let apps = APPS.try_get().expect("AppList uninitialized").lock();
+
+        self.active_app = (self.active_app + 1) % apps.len();
     }
 
     pub fn prev_app(&mut self) {
-        self.active_app = (self.active_app + self.apps.len() - 1) % self.apps.len();
+        let apps = APPS.try_get().expect("AppList uninitialized").lock();
+        self.active_app = (self.active_app + apps.len() - 1) % apps.len();
     }
 
     pub fn change_app(&mut self, index: usize) {
-        self.active_app = index % self.apps.len();
-    }
-
-    pub fn active_app(&self) -> &Box<dyn App> {
-        &self.apps[self.active_app]
+        let apps = APPS.try_get().expect("AppList uninitialized").lock();
+        self.active_app = index % apps.len();
     }
 }
 
-
 pub async fn load_all_apps() {
-    APPS.try_get().unwrap().lock().as_mut().unwrap().load_all().await;
+    let mut apps = APPS.try_get().expect("AppList uninitialized").lock();
+
+    for app in &mut apps[..] {
+        app.load().await;
+    }
 }

@@ -255,11 +255,9 @@ fn kernel_main(boot_info: &BootInformation) -> ! {
 
 
     //setup the static APPS list
-    AppList::new();
+    let mut app_list = AppList::new();
     let terminal = apps::terminal::Terminal::new("Terminal", 1);
-    if let Ok(apps) = APPS.try_get() {
-        apps.lock().as_mut().unwrap().add_app(Box::new(terminal));
-    }
+    app_list.add_app(Box::new(terminal));
                 
     let mut executor = Executor::new();
     executor.spawn(Task::new(keyboard::print_keypresses()));
