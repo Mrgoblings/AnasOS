@@ -56,9 +56,7 @@ impl<'a> Framebuffer<'a> {
     }
 
     pub fn fill(&mut self, color: Rgb888) {
-        for pixel in self.back_buffer.iter_mut() {
-            *pixel = color;
-        }
+        self.back_buffer.fill(color);
     }
 }
 

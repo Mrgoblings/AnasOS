@@ -118,10 +118,11 @@ impl App for Terminal {
 
             println!("Drew circle");
 
-            let mut text: String = self.buffer.iter().collect();
+            let mut text: String = from_char_array_to_string(self.buffer); // self.buffer.iter().collect();
             if text.len() == 0 {
                 text = String::from("Type something");
             }
+
             Text::new(&self.title, Point::new(600, 20), title_style)
                 .draw(framebuffer)
                 .unwrap();
@@ -153,4 +154,15 @@ impl App for Terminal {
             }
         }
     }
+}
+
+pub fn from_char_array_to_string(array: [char; BUFFER_SIZE]) -> String {
+    let mut string = String::new();
+    for c in array.iter() {
+        if *c == '\0' {
+            break;
+        }
+        string.push(*c);
+    }
+    string
 }
