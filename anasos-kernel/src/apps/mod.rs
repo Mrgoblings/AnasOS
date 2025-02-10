@@ -1,148 +1,175 @@
-use core::{
-    future::Future,
-    pin::Pin,
-    task::{Context, Poll},
-};
+use core::{fmt::Debug, pin::Pin, sync::atomic::{AtomicBool, Ordering}, task::{Context, Poll}};
 
 use alloc::{boxed::Box, vec::Vec};
 use conquer_once::spin::OnceCell;
 use crossbeam_queue::ArrayQueue;
-use futures_util::{task::AtomicWaker, Stream};
+use futures_util::{
+    task::AtomicWaker,
+    stream::{Stream, StreamExt},
+};
 
-use crate::println;
-use spin::Mutex;
+
+
+pub static APPS_UPDATE_WAKER: AtomicWaker = AtomicWaker::new();
+pub static APPS_HAS_UPDATES: AtomicBool = AtomicBool::new(false);
 
 pub mod terminal;
 
-pub static APPS: OnceCell<Mutex<Vec<Box<dyn App>>>> = OnceCell::uninit();
+pub static APPS_QUEUE: OnceCell<ArrayQueue<Box<(dyn App + 'static)>>> = OnceCell::uninit();
+pub static APPS_SCANNCODE_QUEUE: OnceCell<ArrayQueue<u8>> = OnceCell::uninit();
 
-pub trait App: Send + Sync {
-    fn name(&self) -> &'static str;
-    fn priority(&self) -> u8;
-    fn init(&self);
-    unsafe fn draw(&self);
-    fn load(&mut self) -> Pin<Box<dyn Future<Output = ()> + Send + '_>>;
-    fn add_key_input(&self, scancode: u8);
-}
 
-pub struct KeyStream {
-    scancode_queue: ArrayQueue<u8>,
-    waker: AtomicWaker,
-}
-
-impl KeyStream {
-    pub fn new() -> Self {
-        KeyStream {
-            scancode_queue: ArrayQueue::new(100),
-            waker: AtomicWaker::new(),
-        }
-    }
-
-    pub fn add_scancode(&self, scancode: u8) {
-        println!("add_scancode: scancode: {}", scancode);
-        if let Err(_) = self.scancode_queue.push(scancode) {
-            println!("WARNING: scancode queue full; dropping keyboard input");
-        } else {
-            self.waker.wake();
-        }
-    }
-}
-
-impl Stream for KeyStream {
-    type Item = u8;
-
-    fn poll_next(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Option<u8>> {
-        println!("KeyStream::poll_next");
-        let queue = &self.scancode_queue;
-
-        // fast path
-        if let Some(scancode) = queue.pop() {
-            return Poll::Ready(Some(scancode));
-        }
-
-        self.waker.register(&cx.waker());
-        match queue.pop() {
-            Some(scancode) => {
-                self.waker.take();
-                Poll::Ready(Some(scancode))
-            }
-            None => Poll::Pending,
-        }
-    }
-}
 
 pub struct AppList {
+    app_list: Vec<Box<dyn App>>,
     active_app: usize,
 }
 
+#[allow(dead_code)]
 impl AppList {
     pub fn new() -> Self {
-        APPS.try_init_once(|| Mutex::new(Vec::new()))
-            .expect("AppList::new should only be called once");
-        AppList { active_app: 0 }
-    }
-
-    pub fn add_app(&mut self, app: Box<dyn App>) {
-        let mut apps = APPS.try_get().expect("AppList uninitialized").lock();
-
-        apps.push(app);
-    }
-
-    pub fn draw_all(&mut self) {
-        let mut apps = APPS.try_get().expect("AppList uninitialized").lock();
-
-        apps.sort_by(|a, b| a.priority().cmp(&b.priority()));
-
-        for app in &mut apps[..] {
-            unsafe {
-                app.draw();
-            }
+        AppList {
+            app_list: Vec::new(),
+            active_app: 0,
         }
     }
 
-    pub fn init_all(&mut self) {
-        let mut apps = APPS.try_get().expect("AppList uninitialized").lock();
+    pub fn push(&mut self, app: Box<dyn App>) {
+        self.app_list.push(app);
+    }
 
-        for app in &mut apps[..] {
+    // TODO implement remove method
+    pub fn remove(&mut self, _index: usize) {
+        unimplemented!()
+    }
+
+
+    // lifecycle methods
+    fn draw_active(&mut self) {
+        unsafe { self.app_list[self.active_app].draw() };
+    }
+
+    fn init_all(&mut self) {
+        for app in &mut self.app_list {
             app.init();
         }
     }
 
-    pub async fn load_all(&mut self) {
-        let mut apps = APPS.try_get().expect("AppList uninitialized").lock();
-
-        for app in &mut apps[..] {
-            app.load().await;
+    fn update_all(&mut self) {
+        for app in &mut self.app_list {
+            app.update();
         }
     }
 
-    pub fn add_key_input(&self, scancode: u8) {
-        let apps = APPS.try_get().expect("AppList uninitialized").lock();
-
-        apps[self.active_app].add_key_input(scancode);
+    pub fn single_cycle(&mut self) {
+        if self.app_list.is_empty() {
+            return;
+        }
+        
+        self.update_all();
+        self.draw_active();
     }
 
-    pub fn next_app(&mut self) {
-        let apps = APPS.try_get().expect("AppList uninitialized").lock();
 
-        self.active_app = (self.active_app + 1) % apps.len();
+    // input handlers
+    pub fn handle_scancodes(&self) {
+        let scancode_queue = APPS_SCANNCODE_QUEUE.try_get();
+        if scancode_queue.is_err() {
+            return;
+        }
+
+        let scancode_queue = scancode_queue.unwrap();
+        while let Some(scancode) = scancode_queue.pop() {
+            self.app_list[self.active_app].scancode_push(scancode);
+        }
+    }
+
+    pub fn handle_app_queue(&mut self) {
+        let app_queue = APPS_QUEUE.try_get();
+        if app_queue.is_err() {
+            return;
+        }
+        
+        let app_queue = app_queue.unwrap();
+        while let Some(app) = app_queue.pop() {
+            app.init(); // NOTE: this may not be the right place to call init
+            self.push(app);
+        }
+    }
+
+
+    // active-app manipulation
+    pub fn next_app(&mut self) {
+        self.active_app = (self.active_app + 1) % self.app_list.len();
     }
 
     pub fn prev_app(&mut self) {
-        let apps = APPS.try_get().expect("AppList uninitialized").lock();
-        self.active_app = (self.active_app + apps.len() - 1) % apps.len();
+        self.active_app = (self.active_app + self.app_list.len() - 1) % self.app_list.len();
     }
 
     pub fn change_app(&mut self, index: usize) {
-        let apps = APPS.try_get().expect("AppList uninitialized").lock();
-        self.active_app = index % apps.len();
+        self.active_app = index % self.app_list.len();
     }
 }
 
-pub async fn load_all_apps() {
-    let mut apps = APPS.try_get().expect("AppList uninitialized").lock();
+impl Stream for AppList {
+    type Item = ();
 
-    for app in &mut apps[..] {
-        app.load().await;
+    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<()>> {
+        // Register the current waker
+        APPS_UPDATE_WAKER.register(cx.waker());
+
+        // Check if there are updates
+        if APPS_HAS_UPDATES.load(Ordering::SeqCst) {
+            // Reset the update flag
+            APPS_HAS_UPDATES.store(false, Ordering::SeqCst);
+            Poll::Ready(Some(()))
+        } else {
+            Poll::Pending
+        }
     }
+}
+
+pub async fn apps_lifecycle() {
+    let mut apps_list = AppList::new();
+
+    loop {
+        apps_list.next().await;
+        if APPS_HAS_UPDATES.load(Ordering::Relaxed) {
+
+            apps_list.handle_scancodes();
+            apps_list.handle_app_queue();
+            apps_list.single_cycle();
+
+            APPS_HAS_UPDATES.store(false, core::sync::atomic::Ordering::Relaxed);
+        } 
+    }
+}
+
+pub fn add_app(app: Box<dyn App>) {
+    let app_queue = APPS_QUEUE.try_get_or_init(|| ArrayQueue::new(10)).expect("app queue uninitialized");
+    let _ = app_queue.push(app);
+    APPS_HAS_UPDATES.store(true, Ordering::Relaxed);
+}
+
+pub fn add_scancode(scancode: u8) {
+    let scancode_queue = APPS_SCANNCODE_QUEUE.try_get_or_init(|| ArrayQueue::new(100)).expect("scancode queue uninitialized");
+    let _ = scancode_queue.push(scancode);
+    APPS_HAS_UPDATES.store(true, Ordering::Relaxed);
+}
+
+pub trait App: Send + Sync {
+    //getters methods
+    fn name(&self) -> &'static str;
+    fn priority(&self) -> u8;
+    fn title(&self) -> &'static str;
+
+    // input methods
+    fn scancode_push(&self, scancode: u8) -> Result<(), ()>;
+
+    // lifecycle methods
+    fn init(&self);
+    unsafe fn draw(&self);
+    fn update(&mut self);
+    
 }

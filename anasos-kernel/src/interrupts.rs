@@ -1,3 +1,5 @@
+use core::sync::atomic::Ordering;
+
 use x86_64::structures::idt::InterruptDescriptorTable;
 use x86_64::structures::idt::InterruptStackFrame;
 use x86_64::structures::idt::PageFaultErrorCode;
@@ -6,6 +8,7 @@ use lazy_static::lazy_static;
 use pic8259::ChainedPics;
 use spin;
 
+use crate::apps;
 use crate::task::draw::swap_buffers;
 use crate::{println, print, gdt, hlt};
 
@@ -72,8 +75,9 @@ extern "x86-interrupt" fn timer_interrupt_handler(
     _stack_frame: InterruptStackFrame)
 {
     print!("."); 
-
+    
     swap_buffers();
+    apps::APPS_UPDATE_WAKER.wake();
 
     unsafe {
         PICS.lock()

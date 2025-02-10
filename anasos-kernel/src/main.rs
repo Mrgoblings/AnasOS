@@ -6,7 +6,7 @@ use core::panic::PanicInfo;
 
 use alloc::boxed::Box;
 use anasos_kernel::{
-    allocator, apps::{self, terminal::Terminal, App, AppList, APPS}, framebuffer::{self, mapping::map_framebuffer, FRAMEBUFFER}, hlt, init, memory::{
+    allocator, apps, framebuffer::{self, mapping::map_framebuffer, FRAMEBUFFER}, hlt, init, memory::{
         self,
         memory_map::{FrameRange, FromMemoryMapTag, MemoryMap, MemoryRegion, MemoryRegionType},
         BootInfoFrameAllocator,
@@ -16,14 +16,7 @@ use anasos_kernel::{
         keyboard, Task,
     }
 };
-use embedded_graphics::{
-    // mono_font::{ascii::{FONT_10X20, FONT_6X9}, MonoTextStyleBuilder},
-    pixelcolor::Rgb888,
-    // prelude::*,
-    // primitives::{Circle, PrimitiveStyleBuilder},
-    // text::Text,
-};
-use lazy_static::lazy_static;
+use embedded_graphics::pixelcolor::Rgb888;
 use x86_64::{
     structures::paging::{Mapper, Page, Size4KiB},
     PhysAddr, VirtAddr,
@@ -38,15 +31,6 @@ extern "C" {
 extern crate multiboot2;
 use multiboot2::{BootInformation, BootInformationHeader};
 
-// lazy_static! {
-//     // static ref APPS: AppList = AppList::new();
-//     // static mut terminal: Terminal = apps::terminal::Terminal::new("QuackLine", 1);
-//     static ref TERMINAL: Terminal = apps::terminal::Terminal::new("QuackLine", 1);
-// }
-
-// pub async fn load_terminal() {
-//     TERMINAL.load().await;
-// }
 
 
 #[no_mangle]
@@ -255,15 +239,13 @@ fn kernel_main(boot_info: &BootInformation) -> ! {
 
 
     //setup the static APPS list
-    let mut app_list = AppList::new();
-    let terminal = apps::terminal::Terminal::new("Terminal", 1);
-    app_list.add_app(Box::new(terminal));
+    let terminal = apps::terminal::Terminal::new("Terminal", "Quack-Line", 1);
+    apps::add_app(Box::new(terminal));
                 
     let mut executor = Executor::new();
-    executor.spawn(Task::new(keyboard::print_keypresses()));
-    // executor.spawn(Task::new(terminal.load()));
+    executor.spawn(Task::new(keyboard::load_keypresses()));
     
-    executor.spawn(Task::new(apps::load_all_apps()));
+    executor.spawn(Task::new(apps::apps_lifecycle()));
     executor.run(); // This function will never return
 }
 
