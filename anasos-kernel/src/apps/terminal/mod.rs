@@ -119,10 +119,10 @@ impl App for Terminal {
             println!("Drew circle");
 
             let mut text: String = self.buffer.iter().collect();
-            if text.len() > 0 {
+            if text.len() == 0 {
                 text = String::from("Type something");
             }
-            Text::new(&self.title, Point::new(700, 20), title_style)
+            Text::new(&self.title, Point::new(600, 20), title_style)
                 .draw(framebuffer)
                 .unwrap();
             Text::new(&text, Point::new(60, 20), text_style)

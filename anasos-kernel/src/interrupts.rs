@@ -9,7 +9,6 @@ use pic8259::ChainedPics;
 use spin;
 
 use crate::apps;
-use crate::task::draw::swap_buffers;
 use crate::{println, print, gdt, hlt};
 
 pub const PIC_1_OFFSET: u8 = 32;

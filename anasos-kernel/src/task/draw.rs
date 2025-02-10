@@ -85,3 +85,9 @@ pub fn swap_buffers() {
     }
 }
 
+pub fn fill_buffer(color: Rgb888) {
+    let mut framebuffer = unsafe { FRAMEBUFFER.lock() };
+    if let Some(framebuffer) = framebuffer.as_mut() {
+        framebuffer.fill(color);
+    }
+}

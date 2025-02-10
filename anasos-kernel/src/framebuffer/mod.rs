@@ -54,6 +54,12 @@ impl<'a> Framebuffer<'a> {
             self.back_buffer_mut()[y * width + x] = color;
         }
     }
+
+    pub fn fill(&mut self, color: Rgb888) {
+        for pixel in self.back_buffer.iter_mut() {
+            *pixel = color;
+        }
+    }
 }
 
 impl<'a> Dimensions for Framebuffer<'a> {

@@ -3,12 +3,13 @@ use core::{fmt::Debug, pin::Pin, sync::atomic::{AtomicBool, Ordering}, task::{Co
 use alloc::{boxed::Box, vec::Vec};
 use conquer_once::spin::OnceCell;
 use crossbeam_queue::ArrayQueue;
+use embedded_graphics::prelude::RgbColor;
 use futures_util::{
     task::AtomicWaker,
     stream::{Stream, StreamExt},
 };
 
-use crate::{println, task::draw::swap_buffers};
+use crate::{println, task::draw::{fill_buffer, swap_buffers}};
 
 
 
@@ -154,6 +155,7 @@ pub async fn apps_lifecycle() {
 
         //swap buffers
         swap_buffers();
+        fill_buffer(RgbColor::BLACK);
 
         APPS_HAS_UPDATES.store(false, core::sync::atomic::Ordering::Relaxed);
     }
