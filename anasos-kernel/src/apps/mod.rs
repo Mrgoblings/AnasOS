@@ -149,6 +149,8 @@ pub async fn apps_lifecycle() {
         println!("App queue handled");
 
         apps_list.next().await;
+        APPS_HAS_UPDATES.store(false, core::sync::atomic::Ordering::Relaxed);
+
         println!("Next cycle");
         apps_list.single_cycle();
         println!("Single cycle");
@@ -157,7 +159,6 @@ pub async fn apps_lifecycle() {
         swap_buffers();
         fill_buffer(RgbColor::BLACK);
 
-        APPS_HAS_UPDATES.store(false, core::sync::atomic::Ordering::Relaxed);
     }
 }
 

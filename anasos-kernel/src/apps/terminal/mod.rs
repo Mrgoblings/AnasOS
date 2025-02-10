@@ -137,7 +137,7 @@ impl App for Terminal {
         println!("Updating {}", self.name);
 
         //keyboard input
-        if let Some(scancode) = self.scancode_queue.pop() {
+        while let Some(scancode) = self.scancode_queue.pop() {
             if let Ok(Some(key_event)) = self.keyboard.add_byte(scancode) {
                 if let Some(key) = self.keyboard.process_keyevent(key_event) {
                     match key {
