@@ -212,7 +212,7 @@ PT:
     RESB 4096 * 64            ; Level 1 Page Tables (512 entries each)
 end_page_table:
 stack_bottom:
-    RESB 4096 * 5 ; bytes reserved for stack (5 pages)
+    RESB 1 * 100 * 1024 ; bytes reserved for stack
 stack_top:
 
 SECTION .heap

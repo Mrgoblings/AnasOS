@@ -22,7 +22,7 @@ use x86_64::{
     PhysAddr, VirtAddr,
 };
 
-// from linker use the __heap_start and __heap_end symbols
+// from linker
 extern "C" {
     static _heap_start: u64;
     static _heap_end: u64;

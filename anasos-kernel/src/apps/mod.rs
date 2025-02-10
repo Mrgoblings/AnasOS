@@ -8,10 +8,12 @@ use futures_util::{
     stream::{Stream, StreamExt},
 };
 
+use crate::println;
+
 
 
 pub static APPS_UPDATE_WAKER: AtomicWaker = AtomicWaker::new();
-pub static APPS_HAS_UPDATES: AtomicBool = AtomicBool::new(false);
+pub static APPS_HAS_UPDATES: AtomicBool = AtomicBool::new(true);
 
 pub mod terminal;
 
@@ -46,6 +48,7 @@ impl AppList {
 
     // lifecycle methods
     fn draw_active(&mut self) {
+        println!("Drawing active app: {}", self.app_list[self.active_app].name());
         unsafe { self.app_list[self.active_app].draw() };
     }
 
@@ -56,6 +59,7 @@ impl AppList {
     }
 
     fn update_all(&mut self) {
+        println!("Updating all apps");
         for app in &mut self.app_list {
             app.update();
         }
@@ -80,7 +84,7 @@ impl AppList {
 
         let scancode_queue = scancode_queue.unwrap();
         while let Some(scancode) = scancode_queue.pop() {
-            self.app_list[self.active_app].scancode_push(scancode);
+            let _ = self.app_list[self.active_app].scancode_push(scancode);
         }
     }
 
@@ -95,6 +99,8 @@ impl AppList {
             app.init(); // NOTE: this may not be the right place to call init
             self.push(app);
         }
+
+        self.change_app(self.app_list.len() - 1);
     }
 
 
@@ -120,9 +126,9 @@ impl Stream for AppList {
         APPS_UPDATE_WAKER.register(cx.waker());
 
         // Check if there are updates
-        if APPS_HAS_UPDATES.load(Ordering::SeqCst) {
+        if APPS_HAS_UPDATES.load(Ordering::Relaxed) {
             // Reset the update flag
-            APPS_HAS_UPDATES.store(false, Ordering::SeqCst);
+            APPS_HAS_UPDATES.store(false, Ordering::Relaxed);
             Poll::Ready(Some(()))
         } else {
             Poll::Pending
@@ -131,25 +137,30 @@ impl Stream for AppList {
 }
 
 pub async fn apps_lifecycle() {
+    println!("Starting apps lifecycle");
     let mut apps_list = AppList::new();
 
     loop {
+        println!("Apps lifecycle loop");
+        apps_list.handle_scancodes();
+        println!("Scancodes handled");
+        apps_list.handle_app_queue();
+        println!("App queue handled");
+
         apps_list.next().await;
-        if APPS_HAS_UPDATES.load(Ordering::Relaxed) {
-
-            apps_list.handle_scancodes();
-            apps_list.handle_app_queue();
-            apps_list.single_cycle();
-
-            APPS_HAS_UPDATES.store(false, core::sync::atomic::Ordering::Relaxed);
-        } 
+        println!("Next cycle");
+        apps_list.single_cycle();
+        println!("Single cycle");
+        APPS_HAS_UPDATES.store(false, core::sync::atomic::Ordering::Relaxed);
     }
 }
 
 pub fn add_app(app: Box<dyn App>) {
+    println!("Adding app: {}", app.name());
     let app_queue = APPS_QUEUE.try_get_or_init(|| ArrayQueue::new(10)).expect("app queue uninitialized");
     let _ = app_queue.push(app);
     APPS_HAS_UPDATES.store(true, Ordering::Relaxed);
+    println!("App added");
 }
 
 pub fn add_scancode(scancode: u8) {
