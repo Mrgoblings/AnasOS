@@ -8,7 +8,7 @@ use futures_util::{
     stream::{Stream, StreamExt},
 };
 
-use crate::println;
+use crate::{println, task::draw::swap_buffers};
 
 
 
@@ -151,6 +151,10 @@ pub async fn apps_lifecycle() {
         println!("Next cycle");
         apps_list.single_cycle();
         println!("Single cycle");
+
+        //swap buffers
+        swap_buffers();
+
         APPS_HAS_UPDATES.store(false, core::sync::atomic::Ordering::Relaxed);
     }
 }

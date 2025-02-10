@@ -76,7 +76,6 @@ extern "x86-interrupt" fn timer_interrupt_handler(
 {
     print!("."); 
     
-    swap_buffers();
     apps::APPS_UPDATE_WAKER.wake();
 
     unsafe {
