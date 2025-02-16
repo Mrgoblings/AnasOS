@@ -1,7 +1,6 @@
-use core::{future::Future, pin::Pin, str};
+use core::str;
 
-use alloc::{boxed::Box, string::String};
-use crossbeam_queue::ArrayQueue;
+use alloc::string::String;
 use embedded_graphics::{
     mono_font::{ascii::FONT_10X20, MonoTextStyleBuilder},
     pixelcolor::Rgb888,
@@ -9,27 +8,20 @@ use embedded_graphics::{
     primitives::{Circle, PrimitiveStyleBuilder},
     text::Text,
 };
-use pc_keyboard::{layouts, DecodedKey, HandleControl, Keyboard, ScancodeSet1};
 
-use crate::{framebuffer::FRAMEBUFFER, println};
+use crate::{framebuffer::FRAMEBUFFER, println, shell::{self, Shell}};
 
 use super::App;
 
-const BUFFER_SIZE: usize = 1000;
+pub const BUFFER_SIZE: usize = 1000;
+
+
 
 pub struct Terminal {
-    //main, 
     name: &'static str,
     priority: u8,
     title: &'static str,
-
-    //input queues
-    scancode_queue: ArrayQueue<u8>,
-
-    // buffer functionallity here
-    buffer: [char; BUFFER_SIZE],
-    keyboard: Keyboard<layouts::Us104Key, ScancodeSet1>,
-    cursor: usize,
+    shell: Shell,    
 }
 
 impl Terminal {
@@ -38,20 +30,13 @@ impl Terminal {
             name,
             priority,
             title,
-            scancode_queue: ArrayQueue::new(100),
-            buffer: ['\0'; BUFFER_SIZE],
-            keyboard: Keyboard::new(
-                ScancodeSet1::new(),
-                layouts::Us104Key,
-                HandleControl::Ignore,
-            ),
-            cursor: 0,
+            shell: Shell::new("AnasOS>"),
         }
     }
 }
 
 impl App for Terminal {
-    //getters 
+    //getters
     fn name(&self) -> &'static str {
         self.name
     }
@@ -64,33 +49,26 @@ impl App for Terminal {
         self.title
     }
 
-
     //input methods
     fn scancode_push(&self, scancode: u8) -> Result<(), ()> {
-        println!("Terminal add_key_input: scancode: {}", scancode);
-        if let Err(_) = self.scancode_queue.push(scancode) {
-            println!("WARNING: scancode queue full; dropping keyboard input");
-            return Err(());
-        }
-        Ok(())
+        self.shell.scancode_push(scancode)
     }
-
 
     // lifecycle methods
     fn init(&self) {
-        println!("Initializing {}", self.name);
+        println!("TERMINAL> Initializing {}", self.name);
     }
 
-    unsafe fn draw(&self) {
-        println!("Drawing terminal");
-        
+    unsafe fn draw(&mut self) {
+        println!("TERMINAL> Drawing terminal");
+
         let style = PrimitiveStyleBuilder::new()
             .stroke_color(Rgb888::RED)
             .stroke_width(1)
             .fill_color(Rgb888::BLUE)
             .build();
 
-        println!("Setting up style");
+        println!("TERMINAL> Setting up style");
 
         // Draw text
         let text_style = MonoTextStyleBuilder::new()
@@ -103,24 +81,24 @@ impl App for Terminal {
             .text_color(Rgb888::CSS_GRAY)
             .build();
 
-        println!("Setting up text style");
+        println!("TERMINAL> Setting up text style");
 
         {
             let mut framebuffer = FRAMEBUFFER.lock();
-            println!("Got framebuffer lock");
+            println!("TERMINAL> Got framebuffer lock");
             let framebuffer = framebuffer.as_mut().expect("framebuffer lock poisoned");
-            println!("Got framebuffer");
+            println!("TERMINAL> Got framebuffer");
 
             Circle::new(Point::new(100, 100), 50)
                 .into_styled(style)
                 .draw(framebuffer)
                 .unwrap();
 
-            println!("Drew circle");
+            println!("TERMINAL> Drew circle");
 
-            let mut text: String = from_char_array_to_string(self.buffer); // self.buffer.iter().collect();
+            let mut text: String = self.shell.get_buffer(); 
             if text.len() == 0 {
-                text = String::from("Type something");
+                text = String::from("TERMINAL> Type something");
             }
 
             Text::new(&self.title, Point::new(600, 20), title_style)
@@ -130,39 +108,15 @@ impl App for Terminal {
                 .draw(framebuffer)
                 .unwrap();
         }
-        println!("Drew text");
+        println!("TERMINAL> Drew text");
     }
 
     fn update(&mut self) {
-        println!("Updating {}", self.name);
-
-        //keyboard input
-        while let Some(scancode) = self.scancode_queue.pop() {
-            if let Ok(Some(key_event)) = self.keyboard.add_byte(scancode) {
-                if let Some(key) = self.keyboard.process_keyevent(key_event) {
-                    match key {
-                        DecodedKey::Unicode(character) => {
-                            println!("CHAR: {}", character);
-                            self.buffer[self.cursor] = character;
-                            self.cursor += 1;
-                        }
-                        DecodedKey::RawKey(key) => {
-                            println!("KEY: {:?}", key);
-                        }
-                    }
-                }
-            }
-        }
+        println!("TERMINAL> Updating {}", self.name);
+        
+        self.shell.handle_input();
     }
 }
 
-pub fn from_char_array_to_string(array: [char; BUFFER_SIZE]) -> String {
-    let mut string = String::new();
-    for c in array.iter() {
-        if *c == '\0' {
-            break;
-        }
-        string.push(*c);
-    }
-    string
-}
+unsafe impl Sync for Terminal {}
+unsafe impl Send for Terminal {}

@@ -243,7 +243,7 @@ fn kernel_main(boot_info: &BootInformation) -> ! {
     apps::add_app(Box::new(terminal));
                 
     let mut executor = Executor::new();
-    executor.spawn(Task::new(keyboard::load_keypresses()));
+    // executor.spawn(Task::new(keyboard::load_keypresses()));
     
     executor.spawn(Task::new(apps::apps_lifecycle()));
     executor.run(); // This function will never return
