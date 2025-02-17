@@ -3,8 +3,7 @@ use alloc::string::{String, ToString};
 use super::Command;
 
 
-
-pub struct OsFetch {}
+pub(crate) struct OsFetch {}
 
 impl Command for OsFetch {
     fn execute(&self, _args: String) -> String {

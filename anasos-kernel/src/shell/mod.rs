@@ -7,6 +7,7 @@ use alloc::{
 };
 use crossbeam_queue::ArrayQueue;
 use pc_keyboard::{layouts, DecodedKey, HandleControl, Keyboard, ScancodeSet1};
+use x86_64::instructions::port::PortReadOnly;
 
 use crate::{apps::terminal::BUFFER_SIZE, println};
 
@@ -67,7 +68,7 @@ impl Shell {
     }
 
     pub fn execute(&mut self, command: &str, args: String) -> String {
-        command.trim();
+        let command = command.trim();
         println!("SHELL> Executing command: {}", command);
         self.history.push(command.to_string());
 
@@ -110,58 +111,30 @@ impl Shell {
         Ok(())
     }
 
+    /*
+        ; handle_input
+        ; Handle the input from the keyboard
+        ; The method pops a scancode from the queue and processes it
+        ; If the scancode is a key event, the method processes the key event
+        ; If the key event is a raw key, the method processes the raw key
+        ; If the key event is a unicode character, the method processes the character
+        ; The method returns a string, which is:
+            - the output of the command  
+            - possible completions
+    */
     pub fn handle_input(&mut self) -> String {
         //keyboard input
         while let Some(scancode) = self.scancode_queue.pop() {
             if let Ok(Some(key_event)) = self.keyboard.add_byte(scancode) {
                 if let Some(key) = self.keyboard.process_keyevent(key_event) {
+                    println!("SHELL> Key: {:?}", key);
                     match key {
-                        DecodedKey::Unicode(character) => match character {
-                            '\n' => {
-                                let command = self.get_command();
-                                self.cursor = 0;
-                                self.start_last_command = 0;
-                                return self.execute(&command, String::new());
-                            }
-                            '\t' => {
-                                println!("SHELL> TAB From character");
-                                
-                                let input = self.get_command();
-                                let completion = self.complete(&input);
-                                for (i, c) in completion.chars().enumerate() {
-                                    self.buffer[self.cursor + i] = c;
-                                }
-                                self.cursor += completion.len();
-                                self.cursor %= BUFFER_SIZE;
-                                return completion;
-                            }
-                            _ => {
-                                self.buffer[self.cursor] = character;
-                                self.cursor += 1;
-                                self.cursor %= BUFFER_SIZE;
-                                return String::new();
-                            }
-                        },
-
                         DecodedKey::RawKey(key_code) => {
+                            println!("SHELL> Raw key: {:?}", key_code);
                             match key_code {
-                                pc_keyboard::KeyCode::Backspace => {
-                                    if self.cursor > 0 {
-                                        self.cursor -= 1;
-                                    }
-                                    self.buffer[self.cursor] = '\0';
+                                pc_keyboard::KeyCode::Backspace | pc_keyboard::KeyCode::Tab => {
+                                    // never reached, unicode version handles them
                                     return String::new();
-                                },
-                                pc_keyboard::KeyCode::Tab => {
-                                    println!("SHELL> TAB From raw key");
-                                    let input = self.get_command();
-                                    let completion = self.complete(&input);
-                                    for (i, c) in completion.chars().enumerate() {
-                                        self.buffer[self.cursor + i] = c;
-                                    }
-                                    self.cursor += completion.len();
-                                    self.cursor %= BUFFER_SIZE;
-                                    return completion;
                                 },
                                 pc_keyboard::KeyCode::F1 | pc_keyboard::KeyCode::F2 | pc_keyboard::KeyCode::F3 | pc_keyboard::KeyCode::F4 | pc_keyboard::KeyCode::F5 | pc_keyboard::KeyCode::F6 | pc_keyboard::KeyCode::F7 | pc_keyboard::KeyCode::F8 | pc_keyboard::KeyCode::F9 | pc_keyboard::KeyCode::F10 | pc_keyboard::KeyCode::F11 | pc_keyboard::KeyCode::F12 => {
                                     return String::new();
@@ -192,7 +165,46 @@ impl Shell {
                                     return String::new();
                                 }
                             }
-                        }
+                        },
+
+                        DecodedKey::Unicode(character) => {
+                            println!("SHELL> Unicode character: {:?}", character);
+
+                            match character {
+                                '\u{8}' => { // backspace unicode
+                                    println!("SHELL> Backspace from character");
+                                    self.buffer[self.cursor] = '\0';
+                                    if self.cursor > 0 {
+                                        self.cursor -= 1;
+                                    }
+                                    return String::new();
+                                },
+                                '\n' => {
+                                    let command = self.get_command();
+                                    self.cursor = 0;
+                                    self.start_last_command = 0;
+                                    return self.execute(&command, String::new());
+                                }
+                                '\t' => {
+                                    println!("SHELL> TAB From character");
+                                    
+                                    let input = self.get_command();
+                                    let completion = self.complete(&input);
+                                    for (i, c) in completion.chars().enumerate() {
+                                        self.buffer[self.cursor + i] = c;
+                                    }
+                                    self.cursor += completion.len();
+                                    self.cursor %= BUFFER_SIZE;
+                                    return completion;
+                                }
+                                _ => {
+                                    self.buffer[self.cursor] = character;
+                                    self.cursor += 1;
+                                    self.cursor %= BUFFER_SIZE;
+                                    return String::new();
+                                }
+                            }
+                        },
                     }
                 }
             }
@@ -234,6 +246,7 @@ impl Shell {
         let command: String = self.buffer[self.start_last_command..self.cursor]
             .iter()
             .collect();
+        println!("SHELL> Gotten Command: {}", command);
         format!("{}{}", self.get_prompt(), command)
     }
 }

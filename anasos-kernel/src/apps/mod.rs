@@ -160,7 +160,8 @@ pub async fn apps_lifecycle() {
         if let Ok(apps_queue) = APPS_QUEUE.try_get() {
             if let Ok(apps_scancode_queue) = APPS_SCANNCODE_QUEUE.try_get() {
                 if apps_queue.is_empty() && !apps_scancode_queue.is_empty() {
-                    APPS_HAS_UPDATES.store(false, core::sync::atomic::Ordering::Relaxed);
+                    // TODO better handling of APPS_HAS_UPDATES
+                    // APPS_HAS_UPDATES.store(false, core::sync::atomic::Ordering::Relaxed);
                 }
             }
         }
