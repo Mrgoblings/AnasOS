@@ -26,12 +26,13 @@ static WAKER: AtomicWaker = AtomicWaker::new();
 pub(crate) fn add_frame_position(x: usize, y: usize, color: Rgb888) {
     if let Ok(queue) = FRAME_QUEUE.try_get() {
         if let Err(_) = queue.push(FramePosition::new(x, y, color)) {
-            println!("WARNING: frame queue full; dropping frame input");
+            println!("DRAW> WARNING: frame queue full; dropping frame input");
         } else {
+            println!("DRAW> Added frame position: ({}, {})", x, y);
             WAKER.wake();
         }
     } else {
-        println!("WARNING: frame queue uninitialized");
+        println!("DRAW> WARNING: frame queue uninitialized");
     }
 }
 
@@ -51,7 +52,7 @@ pub struct FrameStream {
 impl FrameStream {
     pub fn new() -> Self {
         FRAME_QUEUE.try_init_once(|| Arc::new(ArrayQueue::new(FRAME_QUEUE_SIZE)))
-            .expect("FrameStream::new should only be called once");
+            .expect("DRAW> FrameStream::new should only be called once");
         FrameStream { _private: () }
     }
 }
@@ -62,7 +63,7 @@ impl Stream for FrameStream {
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Option<FramePosition>> {
         let queue = FRAME_QUEUE
             .try_get()
-            .expect("frame queue not initialized");
+            .expect("DRAW> Frame queue not initialized");
 
         // fast path
         if let Some(frame) = queue.pop() {

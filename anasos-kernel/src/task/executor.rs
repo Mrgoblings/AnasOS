@@ -1,3 +1,5 @@
+use crate::{print, println};
+
 use super::{Task, TaskId};
 use alloc::{collections::BTreeMap, sync::Arc, task::Wake};
 use core::task::{Waker, Context, Poll};
@@ -92,7 +94,8 @@ impl TaskWaker {
     }
 
     fn wake_task(&self) {
-        self.task_queue.push(self.task_id).expect("EXECUTOR> Error! Task queue full and can not be woken");
+        println!("EXECUTOR> Waking task {:?}", self.task_id);
+        self.task_queue.push(self.task_id).expect("EXECUTOR> Error: Task queue full and can not be woken");
     }
 }
 

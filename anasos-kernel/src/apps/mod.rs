@@ -22,12 +22,75 @@ pub const SCANCODE_QUEUE_SIZE: usize = 100;
 pub const APPS_QUEUE_SIZE: usize = 10;
 
 pub static APPS_UPDATE_WAKER: AtomicWaker = AtomicWaker::new();
-pub static APPS_HAS_UPDATES: AtomicBool = AtomicBool::new(true);
+pub static APPS_CURRENTLY_UPDATING: AtomicBool = AtomicBool::new(false);
 
 pub mod terminal;
 
 pub static APPS_QUEUE: OnceCell<Arc<ArrayQueue<Box<(dyn App + 'static)>>>> = OnceCell::uninit();
 pub static APPS_SCANNCODE_QUEUE: OnceCell<Arc<ArrayQueue<u8>>> = OnceCell::uninit();
+
+
+pub async fn apps_lifecycle() {
+    println!("APPLIST> Starting apps lifecycle");
+    let mut apps_list = AppList::new();
+
+    loop {
+        println!("APPLIST> Apps lifecycle loop");
+        apps_list.handle_scancodes();
+        println!("APPLIST> Scancodes handled");
+        apps_list.handle_app_queue();
+        println!("APPLIST> App queue handled");
+
+        apps_list.next().await;
+        APPS_CURRENTLY_UPDATING.store(true, Ordering::Relaxed);
+        
+        println!("APPLIST> Next cycle");
+        apps_list.single_cycle();
+        println!("APPLIST> Single cycle");
+
+        //swap buffers
+        swap_buffers();
+        fill_buffer(RgbColor::BLACK);
+
+        APPS_CURRENTLY_UPDATING.store(false, Ordering::Relaxed);
+    }
+}
+
+pub fn add_app(app: Box<dyn App>) {
+    println!("APPLIST> Adding app: {}", app.name());
+    let app_queue = APPS_QUEUE
+        .try_get_or_init(|| Arc::new(ArrayQueue::new(APPS_QUEUE_SIZE)))
+        .expect("APPLIST> app queue uninitialized");
+    match app_queue.push(app) {
+        Ok(_) => println!("APPLIST> App added"),
+        Err(_) => println!("APPLIST> App queue full"),
+    }
+}
+
+pub fn add_scancode(scancode: u8) {
+    let scancode_queue = APPS_SCANNCODE_QUEUE
+        .try_get_or_init(|| Arc::new(ArrayQueue::new(SCANCODE_QUEUE_SIZE)))
+        .expect("APPLIST> scancode queue uninitialized");
+    match scancode_queue.push(scancode) {
+        Ok(_) => println!("APPLIST> Scancode added"),
+        Err(_) => println!("APPLIST> Scancode queue full"),
+    }
+}
+
+pub trait App: Send + Sync {
+    //getters methods
+    fn name(&self) -> &'static str;
+    fn priority(&self) -> u8;
+    fn title(&self) -> &'static str;
+
+    // input methods
+    fn scancode_push(&self, scancode: u8) -> Result<(), ()>;
+
+    // lifecycle methods
+    fn init(&self);
+    unsafe fn draw(&mut self);
+    fn update(&mut self);
+}
 
 pub struct AppList {
     app_list: Vec<Box<dyn App>>,
@@ -137,76 +200,10 @@ impl Stream for AppList {
         APPS_UPDATE_WAKER.register(cx.waker());
 
         // Check if there are updates
-        if APPS_HAS_UPDATES.load(Ordering::Relaxed) {
-            // Reset the update flag
-            // TODO too many wakeups are happening when commented out. executor filled in first 10 sek
-            if let Ok(apps_queue) = APPS_QUEUE.try_get() {
-                if let Ok(apps_scancode_queue) = APPS_SCANNCODE_QUEUE.try_get() {
-                    if apps_queue.is_empty() && !apps_scancode_queue.is_empty() {
-                        APPS_HAS_UPDATES.store(false, Ordering::Relaxed);
-                    }
-                }
-            }
-
+        if !APPS_CURRENTLY_UPDATING.load(Ordering::Relaxed) {
             Poll::Ready(Some(()))
         } else {
             Poll::Pending
         }
     }
-}
-
-pub async fn apps_lifecycle() {
-    println!("APPLIST> Starting apps lifecycle");
-    let mut apps_list = AppList::new();
-
-    loop {
-        println!("APPLIST> Apps lifecycle loop");
-        apps_list.handle_scancodes();
-        println!("APPLIST> Scancodes handled");
-        apps_list.handle_app_queue();
-        println!("APPLIST> App queue handled");
-
-        apps_list.next().await;
-        
-        println!("APPLIST> Next cycle");
-        apps_list.single_cycle();
-        println!("APPLIST> Single cycle");
-
-        //swap buffers
-        swap_buffers();
-        fill_buffer(RgbColor::BLACK);
-    }
-}
-
-pub fn add_app(app: Box<dyn App>) {
-    println!("APPLIST> Adding app: {}", app.name());
-    let app_queue = APPS_QUEUE
-        .try_get_or_init(|| Arc::new(ArrayQueue::new(APPS_QUEUE_SIZE)))
-        .expect("APPLIST> app queue uninitialized");
-    let _ = app_queue.push(app);
-    APPS_HAS_UPDATES.store(true, Ordering::Relaxed);
-    println!("APPLIST> App added");
-}
-
-pub fn add_scancode(scancode: u8) {
-    let scancode_queue = APPS_SCANNCODE_QUEUE
-        .try_get_or_init(|| Arc::new(ArrayQueue::new(SCANCODE_QUEUE_SIZE)))
-        .expect("APPLIST> scancode queue uninitialized");
-    let _ = scancode_queue.push(scancode);
-    APPS_HAS_UPDATES.store(true, Ordering::Relaxed);
-}
-
-pub trait App: Send + Sync {
-    //getters methods
-    fn name(&self) -> &'static str;
-    fn priority(&self) -> u8;
-    fn title(&self) -> &'static str;
-
-    // input methods
-    fn scancode_push(&self, scancode: u8) -> Result<(), ()>;
-
-    // lifecycle methods
-    fn init(&self);
-    unsafe fn draw(&mut self);
-    fn update(&mut self);
 }

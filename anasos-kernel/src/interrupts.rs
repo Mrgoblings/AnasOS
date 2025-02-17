@@ -74,8 +74,10 @@ extern "x86-interrupt" fn timer_interrupt_handler(
     _stack_frame: InterruptStackFrame)
 {
     print!("."); 
-    
-    apps::APPS_UPDATE_WAKER.wake();
+
+    if !apps::APPS_CURRENTLY_UPDATING.load(Ordering::Relaxed) {
+        apps::APPS_UPDATE_WAKER.wake();
+    }
 
     unsafe {
         PICS.lock()
