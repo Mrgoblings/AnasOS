@@ -243,6 +243,7 @@ pub fn _print(args: fmt::Arguments) {
     use core::fmt::Write;
     use x86_64::instructions::interrupts;
     interrupts::without_interrupts(|| {
+        // TODO implement a smarter outdated VGA buffer support 
         WRITER.lock().write_fmt(args).unwrap();
         serial::_print(args);
     });

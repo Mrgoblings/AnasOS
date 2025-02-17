@@ -215,7 +215,7 @@ impl Shell {
     }
 
     pub fn get_buffer(&self) -> String {
-        self.buffer.iter().collect()
+        self.buffer[0..self.cursor].iter().collect()
     }
 
     // Private commands

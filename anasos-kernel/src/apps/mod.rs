@@ -137,7 +137,15 @@ impl Stream for AppList {
         // Check if there are updates
         if APPS_HAS_UPDATES.load(Ordering::Relaxed) {
             // Reset the update flag
-            APPS_HAS_UPDATES.store(false, Ordering::Relaxed);
+            // TODO too many wakeups are happening when commented out. executor filled in first 10 sek
+            if let Ok(apps_queue) = APPS_QUEUE.try_get() {
+                if let Ok(apps_scancode_queue) = APPS_SCANNCODE_QUEUE.try_get() {
+                    if apps_queue.is_empty() && !apps_scancode_queue.is_empty() {
+                        APPS_HAS_UPDATES.store(false, Ordering::Relaxed);
+                    }
+                }
+            }
+
             Poll::Ready(Some(()))
         } else {
             Poll::Pending
@@ -157,15 +165,7 @@ pub async fn apps_lifecycle() {
         println!("APPLIST> App queue handled");
 
         apps_list.next().await;
-        if let Ok(apps_queue) = APPS_QUEUE.try_get() {
-            if let Ok(apps_scancode_queue) = APPS_SCANNCODE_QUEUE.try_get() {
-                if apps_queue.is_empty() && !apps_scancode_queue.is_empty() {
-                    // TODO better handling of APPS_HAS_UPDATES
-                    // APPS_HAS_UPDATES.store(false, core::sync::atomic::Ordering::Relaxed);
-                }
-            }
-        }
-
+        
         println!("APPLIST> Next cycle");
         apps_list.single_cycle();
         println!("APPLIST> Single cycle");

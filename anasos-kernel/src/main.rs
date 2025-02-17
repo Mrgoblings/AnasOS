@@ -11,9 +11,7 @@ use anasos_kernel::{
         memory_map::{FrameRange, FromMemoryMapTag, MemoryMap, MemoryRegion, MemoryRegionType},
         BootInfoFrameAllocator,
     }, println, serial_println, task::{
-        // draw,
-        executor::Executor,
-        keyboard, Task,
+        executor::Executor, Task,
     }
 };
 use embedded_graphics::pixelcolor::Rgb888;
