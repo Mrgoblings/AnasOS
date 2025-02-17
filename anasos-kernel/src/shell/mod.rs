@@ -1,15 +1,11 @@
 use alloc::{
-    boxed::Box,
-    collections::btree_map::BTreeMap,
-    format,
-    string::{String, ToString},
-    vec::Vec,
+    boxed::Box, collections::btree_map::BTreeMap, format, string::{String, ToString}, sync::Arc, vec::Vec
 };
 use crossbeam_queue::ArrayQueue;
 use pc_keyboard::{layouts, DecodedKey, HandleControl, Keyboard, ScancodeSet1};
 use x86_64::instructions::port::PortReadOnly;
 
-use crate::{apps::terminal::BUFFER_SIZE, println};
+use crate::{apps::{terminal::BUFFER_SIZE, SCANCODE_QUEUE_SIZE}, println};
 
 mod echo;
 mod osfetch;
@@ -38,7 +34,7 @@ pub struct Shell {
     commands: BTreeMap<&'static str, Box<dyn Command>>,
 
     // input queue
-    scancode_queue: ArrayQueue<u8>,
+    scancode_queue: Arc<ArrayQueue<u8>>,
     keyboard: Keyboard<layouts::Us104Key, ScancodeSet1>,
 
     history: Vec<String>,
@@ -57,7 +53,7 @@ impl Shell {
             start_last_command: 0,
             prefix,
             commands,
-            scancode_queue: ArrayQueue::new(100),
+            scancode_queue: Arc::new(ArrayQueue::new(SCANCODE_QUEUE_SIZE)),
             keyboard: Keyboard::new(
                 ScancodeSet1::new(),
                 layouts::Us104Key,

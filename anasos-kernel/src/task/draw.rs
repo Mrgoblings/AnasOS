@@ -3,6 +3,7 @@ use core::{
     task::{Context, Poll},
 };
 
+use alloc::sync::Arc;
 use conquer_once::spin::OnceCell;
 use crossbeam_queue::ArrayQueue;
 use embedded_graphics::pixelcolor::Rgb888;
@@ -13,8 +14,10 @@ use crate::{
     println,
 };
 
+pub const FRAME_QUEUE_SIZE: usize = 100;
 
-static FRAME_QUEUE: OnceCell<ArrayQueue<FramePosition>> = OnceCell::uninit();
+
+static FRAME_QUEUE: OnceCell<Arc<ArrayQueue<FramePosition>>> = OnceCell::uninit();
 static WAKER: AtomicWaker = AtomicWaker::new();
 
 /// Called by the keyboard interrupt handler
@@ -47,7 +50,7 @@ pub struct FrameStream {
 
 impl FrameStream {
     pub fn new() -> Self {
-        FRAME_QUEUE.try_init_once(|| ArrayQueue::new(100))
+        FRAME_QUEUE.try_init_once(|| Arc::new(ArrayQueue::new(FRAME_QUEUE_SIZE)))
             .expect("FrameStream::new should only be called once");
         FrameStream { _private: () }
     }

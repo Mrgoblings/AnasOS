@@ -1,11 +1,10 @@
 use core::{
-    fmt::Debug,
     pin::Pin,
     sync::atomic::{AtomicBool, Ordering},
     task::{Context, Poll},
 };
 
-use alloc::{boxed::Box, vec::Vec};
+use alloc::{boxed::Box, sync::Arc, vec::Vec};
 use conquer_once::spin::OnceCell;
 use crossbeam_queue::ArrayQueue;
 use embedded_graphics::prelude::RgbColor;
@@ -19,13 +18,16 @@ use crate::{
     task::draw::{fill_buffer, swap_buffers},
 };
 
+pub const SCANCODE_QUEUE_SIZE: usize = 100;
+pub const APPS_QUEUE_SIZE: usize = 10;
+
 pub static APPS_UPDATE_WAKER: AtomicWaker = AtomicWaker::new();
 pub static APPS_HAS_UPDATES: AtomicBool = AtomicBool::new(true);
 
 pub mod terminal;
 
-pub static APPS_QUEUE: OnceCell<ArrayQueue<Box<(dyn App + 'static)>>> = OnceCell::uninit();
-pub static APPS_SCANNCODE_QUEUE: OnceCell<ArrayQueue<u8>> = OnceCell::uninit();
+pub static APPS_QUEUE: OnceCell<Arc<ArrayQueue<Box<(dyn App + 'static)>>>> = OnceCell::uninit();
+pub static APPS_SCANNCODE_QUEUE: OnceCell<Arc<ArrayQueue<u8>>> = OnceCell::uninit();
 
 pub struct AppList {
     app_list: Vec<Box<dyn App>>,
@@ -36,7 +38,7 @@ pub struct AppList {
 impl AppList {
     pub fn new() -> Self {
         APPS_SCANNCODE_QUEUE
-            .try_init_once(|| ArrayQueue::new(100))
+            .try_init_once(|| Arc::new(ArrayQueue::new(SCANCODE_QUEUE_SIZE)))
             .expect("APPLIST> scancode queue init failed");
 
         AppList {
@@ -179,7 +181,7 @@ pub async fn apps_lifecycle() {
 pub fn add_app(app: Box<dyn App>) {
     println!("APPLIST> Adding app: {}", app.name());
     let app_queue = APPS_QUEUE
-        .try_get_or_init(|| ArrayQueue::new(10))
+        .try_get_or_init(|| Arc::new(ArrayQueue::new(APPS_QUEUE_SIZE)))
         .expect("APPLIST> app queue uninitialized");
     let _ = app_queue.push(app);
     APPS_HAS_UPDATES.store(true, Ordering::Relaxed);
@@ -188,7 +190,7 @@ pub fn add_app(app: Box<dyn App>) {
 
 pub fn add_scancode(scancode: u8) {
     let scancode_queue = APPS_SCANNCODE_QUEUE
-        .try_get_or_init(|| ArrayQueue::new(100))
+        .try_get_or_init(|| Arc::new(ArrayQueue::new(SCANCODE_QUEUE_SIZE)))
         .expect("APPLIST> scancode queue uninitialized");
     let _ = scancode_queue.push(scancode);
     APPS_HAS_UPDATES.store(true, Ordering::Relaxed);
