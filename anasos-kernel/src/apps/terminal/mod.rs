@@ -9,12 +9,11 @@ use embedded_graphics::{
     text::Text,
 };
 
-use crate::{framebuffer::FRAMEBUFFER, println, shell::{self, Shell}};
+use crate::{framebuffer::FRAMEBUFFER, println, shell::Shell};
 
 use super::App;
 
 pub const BUFFER_SIZE: usize = 1000;
-
 
 
 pub struct Terminal {

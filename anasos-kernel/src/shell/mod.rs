@@ -3,7 +3,6 @@ use alloc::{
 };
 use crossbeam_queue::ArrayQueue;
 use pc_keyboard::{layouts, DecodedKey, HandleControl, Keyboard, ScancodeSet1};
-use x86_64::instructions::port::PortReadOnly;
 
 use crate::{apps::{terminal::BUFFER_SIZE, SCANCODE_QUEUE_SIZE}, println};
 
@@ -27,6 +26,7 @@ pub trait Command {
     ; The shell has an input queue, which is used to store scancodes
 */
 pub struct Shell {
+    // TODO make it stdout
     buffer: [char; BUFFER_SIZE],
     cursor: usize,
     start_last_command: usize,
@@ -37,6 +37,7 @@ pub struct Shell {
     scancode_queue: Arc<ArrayQueue<u8>>,
     keyboard: Keyboard<layouts::Us104Key, ScancodeSet1>,
 
+    // TODO change to not be a vec
     history: Vec<String>,
 }
 

@@ -9,40 +9,13 @@ use crossbeam_queue::ArrayQueue;
 use embedded_graphics::pixelcolor::Rgb888;
 use futures_util::{task::AtomicWaker, Stream, StreamExt};
 
-use crate::{
-    framebuffer::{FramePosition, FRAMEBUFFER},
-    println,
-};
+use crate::framebuffer::{FramePosition, FRAMEBUFFER};
 
 pub const FRAME_QUEUE_SIZE: usize = 100;
 
 
 static FRAME_QUEUE: OnceCell<Arc<ArrayQueue<FramePosition>>> = OnceCell::uninit();
 static WAKER: AtomicWaker = AtomicWaker::new();
-
-/// Called by the keyboard interrupt handler
-///
-/// Must not block or allocate.
-pub(crate) fn add_frame_position(x: usize, y: usize, color: Rgb888) {
-    if let Ok(queue) = FRAME_QUEUE.try_get() {
-        if let Err(_) = queue.push(FramePosition::new(x, y, color)) {
-            println!("DRAW> WARNING: frame queue full; dropping frame input");
-        } else {
-            println!("DRAW> Added frame position: ({}, {})", x, y);
-            WAKER.wake();
-        }
-    } else {
-        println!("DRAW> WARNING: frame queue uninitialized");
-    }
-}
-
-pub async fn draw() {
-    let mut frame_stream = FrameStream::new();
-
-    while let Some(frame) = frame_stream.next().await {
-        add_frame_position(frame.x, frame.y, frame.color);
-    }
-}
 
 
 pub struct FrameStream {
