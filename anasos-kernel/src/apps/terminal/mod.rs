@@ -87,23 +87,24 @@ impl App for Terminal {
             println!("TERMINAL> Got framebuffer lock");
             let framebuffer = framebuffer.as_mut().expect("framebuffer lock poisoned");
             println!("TERMINAL> Got framebuffer");
+            
+            Text::new(&self.title, Point::new(600, 20), title_style)
+                .draw(framebuffer)
+                .unwrap();
 
-            Circle::new(Point::new(100, 100), 50)
+            Circle::new(Point::new(1600, 100), 50)
                 .into_styled(style)
                 .draw(framebuffer)
                 .unwrap();
 
             println!("TERMINAL> Drew circle");
 
-            let mut text: String = self.shell.get_buffer(); 
+
+            let mut text: String = self.shell.get_printable(); 
             if text.len() == 0 {
                 text = String::from("TERMINAL> Type something");
             }
-
-            Text::new(&self.title, Point::new(600, 20), title_style)
-                .draw(framebuffer)
-                .unwrap();
-            Text::new(&text, Point::new(60, 20), text_style)
+            Text::new(&text, Point::new(60, 60), text_style)
                 .draw(framebuffer)
                 .unwrap();
         }

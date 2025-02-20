@@ -6,6 +6,8 @@ use pc_keyboard::{layouts, DecodedKey, HandleControl, Keyboard, ScancodeSet1};
 
 use crate::{apps::{terminal::BUFFER_SIZE, SCANCODE_QUEUE_SIZE}, println};
 
+pub const STD_IN_SIZE: usize = 100; 
+
 mod echo;
 mod osfetch;
 
@@ -13,12 +15,27 @@ pub trait Command {
     fn execute(&self, args: String) -> String;
 }
 
+
+pub struct Buffer<const N: usize> {
+    pub buffer: [char; N],
+    pub cursor: usize,
+}
+
+impl<const N: usize> Buffer<N> {
+    pub fn new() -> Self {
+        Buffer {
+            buffer: ['\0'; N], // Create a fixed-size array filled with '\0'
+            cursor: 0,
+        }
+    }
+}
+
 /*
     ; Shell
     ; A simple shell that can execute commands
     ; Every shell has a prefix, which is the string that is printed before the user input
-    ; The shell has a buffer of size BUFFER_SIZE, which is the maximum number of characters that can be typed
-    ; The shell has a cursor, which is the current position in the buffer
+    ; The shell has a std_out of size BUFFER_SIZE, which is the maximum number of characters that can be typed
+    ; The shell has a cursor_stdout, which is the current position in the std_out buffer
     ; The shell has a start_last_command, which is the position in the buffer where the last command started
     ; The shell has a BTreeMap of commands, which maps a command name to a Command trait object
     ;    The shell has 2 default commands: { help } and { clear }, which use the shell directly
@@ -26,10 +43,9 @@ pub trait Command {
     ; The shell has an input queue, which is used to store scancodes
 */
 pub struct Shell {
-    // TODO make it stdout
-    buffer: [char; BUFFER_SIZE],
-    cursor: usize,
-    start_last_command: usize,
+    std_out: Buffer<BUFFER_SIZE>,
+    std_in: Buffer<STD_IN_SIZE>,
+
     prefix: &'static str,
     commands: BTreeMap<&'static str, Box<dyn Command>>,
 
@@ -49,9 +65,8 @@ impl Shell {
         commands.insert("osfetch", Box::new(osfetch::OsFetch {}));
 
         Shell {
-            buffer: ['\0'; BUFFER_SIZE],
-            cursor: 0,
-            start_last_command: 0,
+            std_out: Buffer::<BUFFER_SIZE>::new(),
+            std_in: Buffer::<STD_IN_SIZE>::new(),
             prefix,
             commands,
             scancode_queue: Arc::new(ArrayQueue::new(SCANCODE_QUEUE_SIZE)),
@@ -64,24 +79,50 @@ impl Shell {
         }
     }
 
-    pub fn execute(&mut self, command: &str, args: String) -> String {
-        let command = command.trim();
-        println!("SHELL> Executing command: {}", command);
-        self.history.push(command.to_string());
+    fn add_char_to_std_out(&mut self, c: char) {
+        self.std_out.buffer[self.std_out.cursor] = c;
+        self.std_out.cursor += 1;
+        self.std_out.cursor %= BUFFER_SIZE;
+    }
 
-        if command == "help" {
-            return self.command_help();
-        } else if command == "clear" {
-            return self.command_clear();
-        }
-
-        match self.commands.get(command) {
-            Some(command) => command.execute(args),
-            None => format!("{}: command not found", command),
+    fn add_str_to_std_out(&mut self, s: &str) {
+        for c in s.chars() {
+            self.add_char_to_std_out(c);
         }
     }
 
-    pub fn complete(&self, input: &str) -> String {
+    pub fn execute(&mut self, command_input: &str, args: String) {
+        let command_trimmed = command_input.trim();
+        println!("SHELL> Executing command: {}", command_input);
+
+        self.add_str_to_std_out(format!("{}{}", self.prefix, command_input).as_str());
+
+        if command_trimmed.is_empty() {
+            println!("SHELL> Command is empty");
+            return;
+        }
+
+        // dont push to history if command starts with a space
+        if !command_input.starts_with(" ") {
+            self.history.push(command_trimmed.to_string());
+        }
+
+        let output;
+        if command_trimmed == "help" {
+            output = self.command_help();
+        } else if command_trimmed == "clear" {
+            output = self.command_clear();
+        } else {
+            match self.commands.get(command_trimmed) {
+            Some(command) => output = command.execute(args),
+            None => output = format!("{}: command not found", command_trimmed),
+            }
+        }
+
+        self.add_str_to_std_out(&output);
+    }
+
+    pub fn complete(&self, input: &str) -> Vec<String> {
         let mut completions = self
             .commands
             .keys()
@@ -89,13 +130,9 @@ impl Shell {
             .map(|command| command.to_string())
             .collect::<Vec<String>>();
 
-        completions.sort();
+           completions.sort();
 
-        if completions.len() == 1 {
-            completions.remove(0)
-        } else {
-            completions.join(" ")
-        }
+           completions
     }
 
     //input methods
@@ -119,86 +156,87 @@ impl Shell {
             - the output of the command  
             - possible completions
     */
-    pub fn handle_input(&mut self) -> String {
+    pub fn handle_input(&mut self) {
         //keyboard input
         while let Some(scancode) = self.scancode_queue.pop() {
             if let Ok(Some(key_event)) = self.keyboard.add_byte(scancode) {
                 if let Some(key) = self.keyboard.process_keyevent(key_event) {
-                    println!("SHELL> Key: {:?}", key);
                     match key {
                         DecodedKey::RawKey(key_code) => {
-                            println!("SHELL> Raw key: {:?}", key_code);
                             match key_code {
                                 pc_keyboard::KeyCode::Backspace | pc_keyboard::KeyCode::Tab => {
                                     // never reached, unicode version handles them
-                                    return String::new();
+                                    return;
                                 },
                                 pc_keyboard::KeyCode::F1 | pc_keyboard::KeyCode::F2 | pc_keyboard::KeyCode::F3 | pc_keyboard::KeyCode::F4 | pc_keyboard::KeyCode::F5 | pc_keyboard::KeyCode::F6 | pc_keyboard::KeyCode::F7 | pc_keyboard::KeyCode::F8 | pc_keyboard::KeyCode::F9 | pc_keyboard::KeyCode::F10 | pc_keyboard::KeyCode::F11 | pc_keyboard::KeyCode::F12 => {
-                                    return String::new();
+                                    return;
                                 },
                                 pc_keyboard::KeyCode::ArrowUp => {
                                     // TODO: implement history
 
-                                    return String::new();
+                                    return;
                                 },
                                 pc_keyboard::KeyCode::ArrowDown => {
                                     // TODO: implement history
 
-                                    return String::new();
+                                    return;
                                 },
                                 pc_keyboard::KeyCode::ArrowLeft => {
-                                    if self.cursor > 0 {
-                                        self.cursor -= 1;
+                                    if self.std_in.cursor > 0 {
+                                        self.std_in.cursor -= 1;
                                     }
-                                    return String::new();
+                                    return;
                                 },
                                 pc_keyboard::KeyCode::ArrowRight => {
-                                    if self.cursor < BUFFER_SIZE {
-                                        self.cursor += 1;
+                                    if self.std_in.cursor < BUFFER_SIZE {
+                                        self.std_in.cursor += 1;
                                     }
-                                    return String::new();
+                                    return;
                                 },
                                 _ => {
-                                    return String::new();
+                                    return;
                                 }
                             }
                         },
 
                         DecodedKey::Unicode(character) => {
-                            println!("SHELL> Unicode character: {:?}", character);
-
                             match character {
                                 '\u{8}' => { // backspace unicode
-                                    println!("SHELL> Backspace from character");
-                                    self.buffer[self.cursor] = '\0';
-                                    if self.cursor > 0 {
-                                        self.cursor -= 1;
+                                    self.std_in.buffer[self.std_in.cursor] = '\0';
+                                    if self.std_in.cursor > 0 {
+                                        self.std_in.cursor -= 1;
                                     }
-                                    return String::new();
+                                    return;
                                 },
                                 '\n' => {
                                     let command = self.get_command();
-                                    self.cursor = 0;
-                                    self.start_last_command = 0;
-                                    return self.execute(&command, String::new());
+                                    self.std_in.cursor = 0;
+                                    self.execute(&command, String::new());
+                                    return;
                                 }
                                 '\t' => {
-                                    println!("SHELL> TAB From character");
                                     
                                     let input = self.get_command();
                                     let completion = self.complete(&input);
-                                    for (i, c) in completion.chars().enumerate() {
-                                        self.buffer[self.cursor + i] = c;
+
+                                    if completion.len() == 1 {
+                                        let completion = completion[0].clone();
+                                        for (i, c) in completion.chars().enumerate() {
+                                            self.std_in.buffer[self.std_in.cursor + i] = c;
+                                        }
+                                        self.std_in.cursor += completion.len();
+                                        // TODO: do not rely on overwriting the buffer 
+                                        self.std_in.cursor %= BUFFER_SIZE;
+                                        return;
                                     }
-                                    self.cursor += completion.len();
-                                    self.cursor %= BUFFER_SIZE;
-                                    return completion;
+                                    // TODO: handle multiple completions
+                                    return;
                                 }
                                 _ => {
-                                    self.buffer[self.cursor] = character;
-                                    self.cursor += 1;
-                                    self.cursor %= BUFFER_SIZE;
-                                    return String::new();
+                                    self.std_in.buffer[self.std_in.cursor] = character;
+                                    self.std_in.cursor += 1;
+                                    self.std_in.cursor %= BUFFER_SIZE;
+                                    return;
                                 }
                             }
                         },
@@ -208,12 +246,25 @@ impl Shell {
         }
 
         // never reached, for rust's error handling
-        return String::new();
+        return;
     }
 
-    pub fn get_buffer(&self) -> String {
-        self.buffer[0..self.cursor].iter().collect()
+    pub fn get_stdout(&self) -> String {
+        self.std_out.buffer[0..self.std_out.cursor].iter().collect()
     }
+
+    pub fn get_stdin(&self) -> String {
+        self.std_in.buffer[0..self.std_in.cursor].iter().collect()
+    }
+
+    pub fn get_prompt(&self) -> String {
+        format!("{} ", self.prefix)
+    }
+
+    pub fn get_printable(&self) -> String {
+        format!("{}\n{}{}", self.get_stdout(), self.get_prompt(), self.get_stdin())
+    }
+    
 
     // Private commands
 
@@ -229,18 +280,12 @@ impl Shell {
     }
 
     fn command_clear(&mut self) -> String {
-        self.buffer = ['\0'; BUFFER_SIZE];
-        self.cursor = 0;
-        self.start_last_command = 0;
+        self.std_out.cursor = 0;
         "".to_string()
     }
 
-    fn get_prompt(&self) -> String {
-        format!("{} ", self.prefix)
-    }
-
     fn get_command(&self) -> String {
-        let command: String = self.buffer[self.start_last_command..self.cursor]
+        let command: String = self.std_in.buffer[0..self.std_out.cursor]
             .iter()
             .collect();
         println!("SHELL> Gotten Command: {}", command);
