@@ -97,7 +97,7 @@ jobs:
         run: ./install_dependencies.sh
 
       - name: Build project
-        run: make no-run
+        run: make kernel-no-run
 
       - name: Archive build output
         run: |
