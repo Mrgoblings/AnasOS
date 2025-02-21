@@ -12,7 +12,7 @@ mod echo;
 mod osfetch;
 
 pub trait Command {
-    fn execute(&self, args: String) -> String;
+    fn execute(&self, args: Vec<&str>) -> String;
 }
 
 
@@ -91,7 +91,7 @@ impl Shell {
         }
     }
 
-    pub fn execute(&mut self, command_input: &str, args: String) {
+    pub fn execute(&mut self, command_input: &str) {
         let command_trimmed = command_input.trim();
         println!("SHELL> Executing command: {}", command_input);
 
@@ -102,20 +102,22 @@ impl Shell {
             return;
         }
 
-        // dont push to history if command starts with a space
+        // NOT pushing to history if command starts with a space
         if !command_input.starts_with(" ") {
             self.history.push(command_trimmed.to_string());
         }
 
+        let command_split: Vec<&str> = command_trimmed.split(" ").collect();
+
         let output;
-        if command_trimmed == "help" {
+        if command_split[0] == "help" {
             output = self.command_help();
-        } else if command_trimmed == "clear" {
+        } else if command_split[0] == "clear" {
             output = self.command_clear();
         } else {
-            match self.commands.get(command_trimmed) {
-            Some(command) => output = command.execute(args),
-            None => output = format!("{}: command not found\n", command_trimmed),
+            match self.commands.get(command_split[0]) {
+            Some(command) => output = command.execute(command_split[1..].to_vec()),
+            None => output = format!("{}: command not found\n", command_split[0]),
             }
         }
 
@@ -211,7 +213,7 @@ impl Shell {
                                     let command = self.get_stdin();
                                     self.std_in.cursor = 0;
                                     // TODO: handle the command with arguments
-                                    self.execute(&command, String::new());
+                                    self.execute(&command);
                                     return;
                                 }
                                 '\t' => {

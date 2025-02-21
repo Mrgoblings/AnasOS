@@ -1,4 +1,4 @@
-use alloc::string::String;
+use alloc::{string::String, vec::Vec};
 
 use super::Command;
 
@@ -6,8 +6,8 @@ use super::Command;
 pub(crate) struct Echo {}
 
 impl Command for Echo {
-    fn execute(&self, args: String) -> String {
-        args
+    fn execute(&self, args: Vec<&str>) -> String {
+        args.join(" ")
     }
     
 }
