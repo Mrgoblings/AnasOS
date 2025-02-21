@@ -4,36 +4,34 @@
 extern crate alloc;
 use core::panic::PanicInfo;
 
+use alloc::boxed::Box;
 use anasos_kernel::{
-    allocator,
-    framebuffer::{self, mapping::map_framebuffer, FRAMEBUFFER},
-    hlt, init,
-    memory::{
+    allocator, apps, framebuffer::{self, mapping::map_framebuffer, FRAMEBUFFER}, hlt, init, memory::{
         self,
         memory_map::{FrameRange, FromMemoryMapTag, MemoryMap, MemoryRegion, MemoryRegionType},
         BootInfoFrameAllocator,
-    },
-    println, serial_println,
-    task::{
-        draw,
-        executor::Executor,
-        keyboard, Task,
-    },
+    }, println, serial_println, task::{
+        executor::Executor, Task,
+    }
+
 };
-use embedded_graphics::{
-    mono_font::{ascii::FONT_6X9, MonoTextStyleBuilder},
-    pixelcolor::Rgb888,
-    prelude::*,
-    primitives::{Circle, PrimitiveStyleBuilder},
-    text::Text,
-};
+
+use embedded_graphics::pixelcolor::Rgb888;
 use x86_64::{
     structures::paging::{Mapper, Page, Size4KiB},
     PhysAddr, VirtAddr,
 };
 
+// from linker
+extern "C" {
+    static _heap_start: u64;
+    static _heap_end: u64;
+}
+
 extern crate multiboot2;
 use multiboot2::{BootInformation, BootInformationHeader};
+
+
 
 #[no_mangle]
 pub extern "C" fn _start(mb_magic: u32, mbi_ptr: u32) -> ! {
@@ -137,24 +135,14 @@ fn kernel_main(boot_info: &BootInformation) -> ! {
     );
     println!("Framebuffer height: {}", framebuffer_height);
 
-    // reserve framebuffer memory
+    // reserve front framebuffer memory
     memory_map.add_region(MemoryRegion {
         range: FrameRange::new(framebuffer_start, framebuffer_start + framebuffer_size),
         region_type: MemoryRegionType::Reserved,
     });
 
-    // Calculate total pages usable
-    let total_pages: u64 = memory_map
-        .iter()
-        .filter(|region| region.region_type == MemoryRegionType::Usable)
-        .map(|region| {
-            let start = region.range.start_addr();
-            let end = region.range.end_addr();
-            (end - start) / 4096 // 4 KiB page size
-        })
-        .sum();
-
-    println!("Framebuffer total pages required: {}", total_pages);
+    println!("Heap start: {:#x}", unsafe { _heap_start });
+    println!("Heap end: {:#x}", unsafe { _heap_end });
 
     // Back Buffer find physical address
     let mut back_buffer_phys_addr: PhysAddr = PhysAddr::new(0); // it is never 0, but it is initialized to 0
@@ -164,26 +152,46 @@ fn kernel_main(boot_info: &BootInformation) -> ! {
         {
             let start = region.range.start_addr();
             let end = region.range.end_addr();
-            let mut current = start;
 
-            while current < end {
+            for current in (start..end).step_by(4096) {
+                if current >= unsafe { _heap_start } as u64 && current <= unsafe { _heap_end } as u64 ||
+                   current + framebuffer_size >= unsafe { _heap_start } as u64 && current + framebuffer_size <= unsafe { _heap_end } as u64 {
+                    continue;
+                }
                 let page = Page::<Size4KiB>::containing_address(VirtAddr::new(current));
-                if !mapper.translate_page(page).is_ok() {
+            
+                if mapper.translate_page(page).is_err() {
                     back_buffer_phys_addr = PhysAddr::new(current);
                     break;
                 }
-                current += 4096;
+            
+                if end - current < framebuffer_size {
+                    break;
+                }
             }
+            
             if back_buffer_phys_addr.as_u64() != 0 {
                 break;
             }
         }
     }
 
+    if back_buffer_phys_addr.as_u64() == 0 {
+        panic!("Failed to find a suitable memory region for the back buffer");
+    }
+
+    // reserve back framebuffer memory
+    memory_map.add_region(MemoryRegion {
+        range: FrameRange::new(back_buffer_phys_addr.as_u64(), back_buffer_phys_addr.as_u64() + framebuffer_size),
+        region_type: MemoryRegionType::Reserved,
+    });
+
     let mut frame_allocator = unsafe { BootInfoFrameAllocator::init(&mut memory_map) };
     allocator::init_heap(&mut mapper, &mut frame_allocator).expect("Heap initialization failed");
     println!("Heap initialized");
     // VALID HEAP ALLOCATION STARTS HERE
+
+    println!("Front framebuffer physical address: {:?}", framebuffer_phys_addr);
 
     // Front Buffer allocation
     match map_framebuffer(
@@ -196,6 +204,8 @@ fn kernel_main(boot_info: &BootInformation) -> ! {
         Ok(_) => println!("Front framebuffer mapped"),
         Err(e) => panic!("Front framebuffer mapping failed: {:?}", e),
     }
+
+    println!("Back framebuffer physical address: {:?}", back_buffer_phys_addr);
 
     // Back Buffer allocation
     match map_framebuffer(
@@ -226,42 +236,18 @@ fn kernel_main(boot_info: &BootInformation) -> ! {
         },
     );
 
-
     //set new framebuffer
     unsafe { FRAMEBUFFER.lock().replace(framebuffer); };
 
-    // Draw a circle
-    let style = PrimitiveStyleBuilder::new()
-        .stroke_color(Rgb888::RED)
-        .stroke_width(1)
-        .fill_color(Rgb888::GREEN)
-        .build();
-
-    // Draw text
-    let text_style = MonoTextStyleBuilder::new()
-    .font(&FONT_6X9)
-    .text_color(Rgb888::WHITE)
-    .build();
-
-    unsafe {
-        let mut framebuffer = FRAMEBUFFER.lock();
-        let framebuffer = framebuffer.as_mut().expect("framebuffer lock poisoned");
-
-        Circle::new(Point::new(100, 100), 50)
-            .into_styled(style)
-            .draw(framebuffer)
-            .unwrap();
-
-        Text::new("Hello, OS!", Point::new(10, 10), text_style)
-            .draw(framebuffer)
-            .unwrap();
-    };
-
     println!("Framebuffer initialized and with successful drawing");
 
+    //setup the static APPS list
+    let terminal = apps::terminal::Terminal::new("Terminal", "Quack-Line", 1);
+    apps::add_app(Box::new(terminal));
+                
     let mut executor = Executor::new();
-    executor.spawn(Task::new(keyboard::print_keypresses()));
-    // executor.spawn(Task::new(draw::draw()));
+    
+    executor.spawn(Task::new(apps::apps_lifecycle()));
     executor.run(); // This function will never return
 }
 

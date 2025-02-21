@@ -1,3 +1,5 @@
+use crate::{print, println};
+
 use super::{Task, TaskId};
 use alloc::{collections::BTreeMap, sync::Arc, task::Wake};
 use core::task::{Waker, Context, Poll};
@@ -23,9 +25,9 @@ impl Executor {
     pub fn spawn(&mut self, task: Task) {
         let task_id = task.id;
         if self.tasks.insert(task.id, task).is_some() {
-            panic!("task with same ID already in tasks");
+            panic!("EXECUTOR> task with same ID already in tasks");
         }
-        self.task_queue.push(task_id).expect("queue full");
+        self.task_queue.push(task_id).expect("EXECUTOR> Error! Task queue full");
     }
 
     
@@ -92,7 +94,8 @@ impl TaskWaker {
     }
 
     fn wake_task(&self) {
-        self.task_queue.push(self.task_id).expect("task_queue full");
+        println!("EXECUTOR> Waking task {:?}", self.task_id);
+        self.task_queue.push(self.task_id).expect("EXECUTOR> Error: Task queue full and can not be woken");
     }
 }
 

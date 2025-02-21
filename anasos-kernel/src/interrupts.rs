@@ -1,6 +1,5 @@
-use embedded_graphics::pixelcolor::Rgb888;
-use embedded_graphics::prelude::RgbColor;
-use futures_util::task;
+use core::sync::atomic::Ordering;
+
 use x86_64::structures::idt::InterruptDescriptorTable;
 use x86_64::structures::idt::InterruptStackFrame;
 use x86_64::structures::idt::PageFaultErrorCode;
@@ -9,7 +8,8 @@ use lazy_static::lazy_static;
 use pic8259::ChainedPics;
 use spin;
 
-use crate::task::draw::swap_buffers;
+use crate::apps;
+
 use crate::{println, print, gdt, hlt};
 
 pub const PIC_1_OFFSET: u8 = 32;
@@ -75,8 +75,6 @@ extern "x86-interrupt" fn timer_interrupt_handler(
     _stack_frame: InterruptStackFrame)
 {
     print!("."); 
-
-    swap_buffers();
 
     unsafe {
         PICS.lock()

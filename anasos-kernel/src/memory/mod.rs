@@ -57,7 +57,6 @@ pub fn create_example_mapping(
 }
 
 /// A FrameAllocator that returns usable frames from the bootloader's memory map.
-/// A FrameAllocator that returns usable frames from the bootloader's memory map.
 pub struct BootInfoFrameAllocator<'a> {
     memory_map: &'a mut MemoryMap,
     next: usize,

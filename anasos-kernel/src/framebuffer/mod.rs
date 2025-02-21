@@ -5,9 +5,8 @@ use embedded_graphics::primitives::Rectangle;
 use spin::Mutex;
 use core::sync::atomic::{AtomicBool, Ordering};
 
-use crate::println;
-
 pub mod mapping;
+
 
 pub static mut FRAMEBUFFER: Mutex<Option<Framebuffer>> = Mutex::new(None);
 
@@ -55,6 +54,10 @@ impl<'a> Framebuffer<'a> {
         if x < self.width && y < self.height {
             self.back_buffer_mut()[y * width + x] = color;
         }
+    }
+
+    pub fn fill(&mut self, color: Rgb888) {
+        self.back_buffer.fill(color);
     }
 }
 

@@ -3,7 +3,7 @@ ENTRY(start_protected_mode)
 SECTIONS
 {
     . = 1M;
-    
+
     .boot ALIGN(4096):
     {
         KEEP(*(.multiboot_header));
@@ -20,7 +20,7 @@ SECTIONS
     }
 
     _kernel_size = _kernel_end_addr - _kernel_start_addr;
-    
+
 
     .bss ALIGN(4096):
     {
