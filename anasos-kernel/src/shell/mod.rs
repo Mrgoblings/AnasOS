@@ -1,5 +1,5 @@
 use alloc::{
-    boxed::Box, collections::btree_map::BTreeMap, format, string::{String, ToString}, sync::Arc, vec::Vec
+    boxed::Box, collections::{btree_map::BTreeMap, vec_deque::VecDeque}, format, string::{String, ToString}, sync::Arc, vec::Vec
 };
 use crossbeam_queue::ArrayQueue;
 use pc_keyboard::{layouts, DecodedKey, HandleControl, Keyboard, ScancodeSet1};
@@ -54,7 +54,7 @@ pub struct Shell {
     keyboard: Keyboard<layouts::Us104Key, ScancodeSet1>,
 
     // TODO change to not be a vec
-    history: Vec<String>,
+    history: VecDeque<String>,
 }
 
 impl Shell {
@@ -75,7 +75,7 @@ impl Shell {
                 layouts::Us104Key,
                 HandleControl::Ignore,
             ),
-            history: Vec::new(),
+            history: VecDeque::new(),
         }
     }
 
@@ -104,7 +104,7 @@ impl Shell {
 
         // NOT pushing to history if command starts with a space
         if !command_input.starts_with(" ") {
-            self.history.push(command_trimmed.to_string());
+            self.history.push_back(command_trimmed.to_string());
         }
 
         let command_split: Vec<&str> = command_trimmed.split(" ").collect();
@@ -173,13 +173,23 @@ impl Shell {
                                 pc_keyboard::KeyCode::F1 | pc_keyboard::KeyCode::F2 | pc_keyboard::KeyCode::F3 | pc_keyboard::KeyCode::F4 | pc_keyboard::KeyCode::F5 | pc_keyboard::KeyCode::F6 | pc_keyboard::KeyCode::F7 | pc_keyboard::KeyCode::F8 | pc_keyboard::KeyCode::F9 | pc_keyboard::KeyCode::F10 | pc_keyboard::KeyCode::F11 | pc_keyboard::KeyCode::F12 => {
                                     return;
                                 },
-                                pc_keyboard::KeyCode::ArrowUp => {
-                                    // TODO: implement history
+                                pc_keyboard::KeyCode::ArrowDown => {
+                                    if self.history.len() == 0 {
+                                        return;
+                                    }
+                                    self.history.push_back(self.get_stdin());
+                                    let input = self.history.pop_front().expect("SHELL> history is empty");
+                                    self.set_stdin(input);
 
                                     return;
                                 },
-                                pc_keyboard::KeyCode::ArrowDown => {
-                                    // TODO: implement history
+                                pc_keyboard::KeyCode::ArrowUp => {
+                                    if self.history.len() == 0 {
+                                        return;
+                                    }
+                                    self.history.push_front(self.get_stdin());
+                                    let input = self.history.pop_back().expect("SHELL> history is empty");
+                                    self.set_stdin(input);
 
                                     return;
                                 },
@@ -212,7 +222,6 @@ impl Shell {
                                 '\n' => {
                                     let command = self.get_stdin();
                                     self.std_in.cursor = 0;
-                                    // TODO: handle the command with arguments
                                     self.execute(&command);
                                     return;
                                 }
@@ -284,5 +293,12 @@ impl Shell {
     fn command_clear(&mut self) -> String {
         self.std_out.cursor = 0;
         "".to_string()
+    }
+
+    fn set_stdin(&mut self, input: String) {
+        for (i, c) in input.chars().enumerate() {
+            self.std_in.buffer[i] = c;
+        }
+        self.std_in.cursor = input.len();
     }
 }
