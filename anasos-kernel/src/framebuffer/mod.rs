@@ -7,6 +7,7 @@ use core::sync::atomic::{AtomicBool, Ordering};
 
 pub mod mapping;
 
+
 pub static mut FRAMEBUFFER: Mutex<Option<Framebuffer>> = Mutex::new(None);
 
 

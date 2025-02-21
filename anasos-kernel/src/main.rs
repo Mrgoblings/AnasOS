@@ -13,7 +13,9 @@ use anasos_kernel::{
     }, println, serial_println, task::{
         executor::Executor, Task,
     }
+
 };
+
 use embedded_graphics::pixelcolor::Rgb888;
 use x86_64::{
     structures::paging::{Mapper, Page, Size4KiB},
@@ -190,6 +192,7 @@ fn kernel_main(boot_info: &BootInformation) -> ! {
     // VALID HEAP ALLOCATION STARTS HERE
 
     println!("Front framebuffer physical address: {:?}", framebuffer_phys_addr);
+
     // Front Buffer allocation
     match map_framebuffer(
         framebuffer_phys_addr,
@@ -203,6 +206,7 @@ fn kernel_main(boot_info: &BootInformation) -> ! {
     }
 
     println!("Back framebuffer physical address: {:?}", back_buffer_phys_addr);
+
     // Back Buffer allocation
     match map_framebuffer(
         back_buffer_phys_addr,
@@ -235,6 +239,7 @@ fn kernel_main(boot_info: &BootInformation) -> ! {
     //set new framebuffer
     unsafe { FRAMEBUFFER.lock().replace(framebuffer); };
 
+    println!("Framebuffer initialized and with successful drawing");
 
     //setup the static APPS list
     let terminal = apps::terminal::Terminal::new("Terminal", "Quack-Line", 1);

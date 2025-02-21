@@ -4,6 +4,7 @@ use core::{
 };
 
 use alloc::sync::Arc;
+
 use conquer_once::spin::OnceCell;
 use crossbeam_queue::ArrayQueue;
 use embedded_graphics::pixelcolor::Rgb888;
@@ -17,7 +18,6 @@ pub const FRAME_QUEUE_SIZE: usize = 100;
 static FRAME_QUEUE: OnceCell<Arc<ArrayQueue<FramePosition>>> = OnceCell::uninit();
 static WAKER: AtomicWaker = AtomicWaker::new();
 
-
 pub struct FrameStream {
     _private: (),
 }
@@ -26,6 +26,7 @@ impl FrameStream {
     pub fn new() -> Self {
         FRAME_QUEUE.try_init_once(|| Arc::new(ArrayQueue::new(FRAME_QUEUE_SIZE)))
             .expect("DRAW> FrameStream::new should only be called once");
+
         FrameStream { _private: () }
     }
 }
