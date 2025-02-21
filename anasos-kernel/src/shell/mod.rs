@@ -95,7 +95,7 @@ impl Shell {
         let command_trimmed = command_input.trim();
         println!("SHELL> Executing command: {}", command_input);
 
-        self.add_str_to_std_out(format!("{}{}", self.prefix, command_input).as_str());
+        self.add_str_to_std_out(format!("{}{}\n", self.prefix, command_input).as_str());
 
         if command_trimmed.is_empty() {
             println!("SHELL> Command is empty");
@@ -115,7 +115,7 @@ impl Shell {
         } else {
             match self.commands.get(command_trimmed) {
             Some(command) => output = command.execute(args),
-            None => output = format!("{}: command not found", command_trimmed),
+            None => output = format!("{}: command not found\n", command_trimmed),
             }
         }
 
@@ -202,21 +202,21 @@ impl Shell {
                         DecodedKey::Unicode(character) => {
                             match character {
                                 '\u{8}' => { // backspace unicode
-                                    self.std_in.buffer[self.std_in.cursor] = '\0';
                                     if self.std_in.cursor > 0 {
                                         self.std_in.cursor -= 1;
                                     }
                                     return;
                                 },
                                 '\n' => {
-                                    let command = self.get_command();
+                                    let command = self.get_stdin();
                                     self.std_in.cursor = 0;
+                                    // TODO: handle the command with arguments
                                     self.execute(&command, String::new());
                                     return;
                                 }
                                 '\t' => {
                                     
-                                    let input = self.get_command();
+                                    let input = self.get_stdin();
                                     let completion = self.complete(&input);
 
                                     if completion.len() == 1 {
@@ -282,13 +282,5 @@ impl Shell {
     fn command_clear(&mut self) -> String {
         self.std_out.cursor = 0;
         "".to_string()
-    }
-
-    fn get_command(&self) -> String {
-        let command: String = self.std_in.buffer[0..self.std_out.cursor]
-            .iter()
-            .collect();
-        println!("SHELL> Gotten Command: {}", command);
-        format!("{}{}", self.get_prompt(), command)
     }
 }
