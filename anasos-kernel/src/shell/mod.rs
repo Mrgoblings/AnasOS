@@ -125,14 +125,22 @@ impl Shell {
     }
 
     pub fn complete(&self, input: &str) -> Vec<String> {
+        println!("SHELL> completions input: {}", input);
+
+        println!("SHELL> completions: {:?}", self.commands.keys());
+
         let mut completions = self
             .commands
             .keys()
+            .cloned()
+            .chain(["clear", "help"].iter().cloned())// add default commands
             .filter(|command| command.starts_with(input))
             .map(|command| command.to_string())
             .collect::<Vec<String>>();
 
            completions.sort();
+
+           println!("SHELL> completions: {:?}", completions);
 
            completions
     }
@@ -174,16 +182,18 @@ impl Shell {
                                     return;
                                 },
                                 pc_keyboard::KeyCode::ArrowDown => {
+                                    // TODO: handle empty lines from history. Needs to have only 1 empty line from the starting stdin.
                                     if self.history.len() == 0 {
                                         return;
                                     }
                                     self.history.push_back(self.get_stdin());
                                     let input = self.history.pop_front().expect("SHELL> history is empty");
                                     self.set_stdin(input);
-
+                                    
                                     return;
                                 },
                                 pc_keyboard::KeyCode::ArrowUp => {
+                                    // TODO: handle empty lines from history. Needs to have only 1 empty line from the starting stdin.
                                     if self.history.len() == 0 {
                                         return;
                                     }
@@ -231,13 +241,7 @@ impl Shell {
                                     let completion = self.complete(&input);
 
                                     if completion.len() == 1 {
-                                        let completion = completion[0].clone();
-                                        for (i, c) in completion.chars().enumerate() {
-                                            self.std_in.buffer[self.std_in.cursor + i] = c;
-                                        }
-                                        self.std_in.cursor += completion.len();
-                                        // TODO: do not rely on overwriting the buffer 
-                                        self.std_in.cursor %= BUFFER_SIZE;
+                                        self.set_stdin(format!("{} ", completion[0]));
                                         return;
                                     }
                                     // TODO: handle multiple completions
