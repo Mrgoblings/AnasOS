@@ -124,7 +124,7 @@ impl Presentation {
     /// Draw a single P6 PPM image at (0,0) in the frame-buffer.
     ///
     /// Expects `data` = b"P6\n<width> <height>\n<max>\n<binary-RGB…>".
-    pub fn draw_ppm(data: &[u8], framebuffer: &mut Framebuffer) {
+    fn draw_ppm(data: &[u8], framebuffer: &mut Framebuffer) {
         // 1) Find end of the third newline (i.e. end of the header)
         let header_end = data
             .iter()
@@ -155,8 +155,9 @@ impl Presentation {
                 let r = pixels[idx] as u32;
                 let g = pixels[idx + 1] as u32;
                 let b = pixels[idx + 2] as u32;
-                let color = (r << 16) | (g << 8) | b;
-                framebuffer.write_pixel(x as u32, y as u32, color);
+                // let color = (r << 16) | (g << 8) | b;
+                let color = Rgb888::new(r,g,b);
+                framebuffer.draw_pixel(x as u32, y as u32, color);
             }
         }
     }
@@ -185,10 +186,10 @@ impl App for Presentation {
     fn init(&mut self) {
         self.log(&format!("Initializing {}", self.name));
 
-        self.slides
-            .add_slide(Slide::new(String::from("Hello World")));
-        self.slides
-            .add_slide(Slide::new(String::from("Hello World 2")));
+        // self.slides
+        //     .add_slide(Slide::new(String::from("Hello World")));
+        // self.slides
+        //    .add_slide(Slide::new(String::from("Hello World 2")));
     }
 
     unsafe fn draw(&mut self) {
