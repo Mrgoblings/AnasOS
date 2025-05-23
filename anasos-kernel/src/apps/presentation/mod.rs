@@ -152,12 +152,12 @@ impl Presentation {
         for y in 0..height {
             for x in 0..width {
                 let idx = (y * width + x) * 3;
-                let r = pixels[idx] as u32;
-                let g = pixels[idx + 1] as u32;
-                let b = pixels[idx + 2] as u32;
+                let r = pixels[idx] as u8;
+                let g = pixels[idx + 1] as u8;
+                let b = pixels[idx + 2] as u8;
                 // let color = (r << 16) | (g << 8) | b;
                 let color = Rgb888::new(r,g,b);
-                framebuffer.draw_pixel(x as u32, y as u32, color);
+                framebuffer.draw_pixel(x as usize, y as usize, color);
             }
         }
     }
@@ -224,8 +224,8 @@ impl App for Presentation {
 
             framebuffer.clear(Rgb888::RED).unwrap();
 
-            self.draw_ppm(
-                SLIDES[self.index].data,
+            Presentation::draw_ppm(
+                SLIDES[self.index],
                 framebuffer,
             );
         }
