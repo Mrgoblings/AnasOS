@@ -284,7 +284,7 @@ impl Shell {
     // Private commands
 
     fn command_help(&self) -> String {
-        let mut output: String = "Available commands:\n".to_string();
+        let mut output: String = "Available commands:\nhelp: this menu\nclear\n".to_string();
 
         for command in self.commands.keys() {
             output.push_str(command);

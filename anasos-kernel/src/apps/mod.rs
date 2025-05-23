@@ -25,6 +25,7 @@ pub static APPS_UPDATE_WAKER: AtomicWaker = AtomicWaker::new();
 pub static APPS_CURRENTLY_UPDATING: AtomicBool = AtomicBool::new(false);
 
 pub mod terminal;
+pub mod presentation;
 
 pub static APPS_QUEUE: OnceCell<Arc<ArrayQueue<Box<(dyn App + 'static)>>>> = OnceCell::uninit();
 pub static APPS_SCANNCODE_QUEUE: OnceCell<Arc<ArrayQueue<u8>>> = OnceCell::uninit();
@@ -87,9 +88,10 @@ pub trait App: Send + Sync {
     fn scancode_push(&self, scancode: u8) -> Result<(), ()>;
 
     // lifecycle methods
-    fn init(&self);
+    fn init(&mut self);
     unsafe fn draw(&mut self);
     fn update(&mut self);
+    fn log(&self, message: &str);
 }
 
 pub struct AppList {
@@ -170,7 +172,8 @@ impl AppList {
         }
 
         let app_queue = app_queue.unwrap();
-        while let Some(app) = app_queue.pop() {
+        while let Some(mut app) = app_queue.pop() {
+
             app.init(); // NOTE: this may not be the right place to call init
             self.push(app);
         }
