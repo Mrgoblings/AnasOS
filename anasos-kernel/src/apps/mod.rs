@@ -173,6 +173,7 @@ impl AppList {
 
         let app_queue = app_queue.unwrap();
         while let Some(mut app) = app_queue.pop() {
+
             app.init(); // NOTE: this may not be the right place to call init
             self.push(app);
         }

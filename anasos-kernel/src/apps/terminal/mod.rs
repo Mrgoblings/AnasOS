@@ -68,7 +68,6 @@ impl App for Terminal {
             .build();
 
         self.log("Setting up style");
-
         // Draw text
         let text_style = MonoTextStyleBuilder::new()
             .font(&FONT_10X20)
@@ -91,14 +90,12 @@ impl App for Terminal {
             Text::new(&self.title, Point::new(600, 20), title_style)
                 .draw(framebuffer)
                 .unwrap();
-
             Circle::new(Point::new(800, 100), 50)
                 .into_styled(style)
                 .draw(framebuffer)
                 .unwrap();
 
             self.log("Drew circle");
-
 
             let mut text: String = self.shell.get_printable(); 
             if text.len() == 0 {
