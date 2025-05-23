@@ -243,7 +243,9 @@ fn kernel_main(boot_info: &BootInformation) -> ! {
 
     //setup the static APPS list
     let terminal = apps::terminal::Terminal::new("Terminal", "Quack-Line", 1);
-    apps::add_app(Box::new(terminal));
+    let presentation = apps::presentation::Presentation::new("Presentation", "Quack-Slide", 2);
+    // apps::add_app(Box::new(terminal));
+    apps::add_app(Box::new(presentation));
                 
     let mut executor = Executor::new();
     

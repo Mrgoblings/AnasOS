@@ -1,6 +1,6 @@
 use core::str;
 
-use alloc::string::String;
+use alloc::{format, string::String};
 use embedded_graphics::{
     mono_font::{ascii::FONT_10X20, MonoTextStyleBuilder},
     pixelcolor::Rgb888,
@@ -54,12 +54,12 @@ impl App for Terminal {
     }
 
     // lifecycle methods
-    fn init(&self) {
-        println!("TERMINAL> Initializing {}", self.name);
+    fn init(&mut self) {
+        self.log(&format!("Initializing {}", self.name));
     }
 
     unsafe fn draw(&mut self) {
-        println!("TERMINAL> Drawing terminal");
+        self.log("Drawing terminal");
 
         let style = PrimitiveStyleBuilder::new()
             .stroke_color(Rgb888::RED)
@@ -67,7 +67,7 @@ impl App for Terminal {
             .fill_color(Rgb888::BLUE)
             .build();
 
-        println!("TERMINAL> Setting up style");
+        self.log("Setting up style");
 
         // Draw text
         let text_style = MonoTextStyleBuilder::new()
@@ -80,24 +80,24 @@ impl App for Terminal {
             .text_color(Rgb888::CSS_GRAY)
             .build();
 
-        println!("TERMINAL> Setting up text style");
+        self.log("Setting up text style");
 
         {
             let mut framebuffer = FRAMEBUFFER.lock();
-            println!("TERMINAL> Got framebuffer lock");
+            self.log("Got framebuffer lock");
             let framebuffer = framebuffer.as_mut().expect("framebuffer lock poisoned");
-            println!("TERMINAL> Got framebuffer");
+            self.log("Got framebuffer");
             
             Text::new(&self.title, Point::new(600, 20), title_style)
                 .draw(framebuffer)
                 .unwrap();
 
-            Circle::new(Point::new(1600, 100), 50)
+            Circle::new(Point::new(800, 100), 50)
                 .into_styled(style)
                 .draw(framebuffer)
                 .unwrap();
 
-            println!("TERMINAL> Drew circle");
+            self.log("Drew circle");
 
 
             let mut text: String = self.shell.get_printable(); 
@@ -108,13 +108,17 @@ impl App for Terminal {
                 .draw(framebuffer)
                 .unwrap();
         }
-        println!("TERMINAL> Drew text");
+        self.log("Drew text");
     }
 
     fn update(&mut self) {
-        println!("TERMINAL> Updating {}", self.name);
+        self.log(&format!("Updating {}", self.name));
         
         self.shell.handle_input();
+    }
+
+    fn log(&self, message: &str) {
+        println!("TERMINAL> {}", message);
     }
 }
 
